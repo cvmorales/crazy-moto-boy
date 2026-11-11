@@ -2,11 +2,11 @@ import * as THREE from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/addons/loaders/GLTFLoader.js';
 import {HDRLoader} from './vendor/addons/loaders/HDRLoader.js';
 import {clone as cloneRig} from './vendor/addons/utils/SkeletonUtils.js';
-import {poseCourierDriver} from './art/courier-pose.js?v=0.32';
+import {poseCourierDriver} from './art/courier-pose.js?v=0.33';
 import {Sky} from './vendor/addons/Sky.js';
-import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.32';
-import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.32';
-import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.32';
+import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.33';
+import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.33';
+import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.33';
 
 export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState}) {
   const gltf=new GLTFLoader(),textures=new THREE.TextureLoader();
@@ -36,6 +36,15 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
   for(const t of [calicanto,stucco,paving]){t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;}
   const architecture=cityWorld.real?cityWorld.realArt:createCordobaArchitecture(cityWorld,{calicanto,stucco,paving,facadeBrick,facadeTile,road:roadColor,roadNormal,roadRough});
   const landscape=cityWorld.real?{root:new THREE.Group(),leafMeshes:[]}:createCanopyStreet(cityWorld,{});
+  if(cityWorld.real){
+    const road=architecture.root.getObjectByName('Calzadas_OSM');if(road){road.material.map=roadColor;road.material.color.set('#c4c7c7');road.material.normalMap=roadNormal;road.material.roughnessMap=roadRough;road.material.normalScale=new THREE.Vector2(.3,.3);road.material.needsUpdate=true;}
+    const canalWall=architecture.root.getObjectByName('Muros_La_Canada');if(canalWall){canalWall.material.map=calicanto;canalWall.material.bumpMap=calicanto;canalWall.material.bumpScale=.07;canalWall.material.color.set('#d3d0bd');canalWall.material.needsUpdate=true;}
+    const c=document.createElement('canvas');c.width=c.height=256;const q=c.getContext('2d');q.fillStyle='#d8d8d2';q.fillRect(0,0,256,256);q.strokeStyle='#abaea9';q.lineWidth=2;for(let n=0;n<=256;n+=64){q.beginPath();q.moveTo(n,0);q.lineTo(n,256);q.stroke();q.beginPath();q.moveTo(0,n);q.lineTo(256,n);q.stroke();}
+    let seed=173;for(let i=0;i<1400;i++){seed=(seed*1664525+1013904223)>>>0;const x=seed%256;seed=(seed*1664525+1013904223)>>>0;const y=seed%256;q.fillStyle=i%2?'rgba(70,70,65,.09)':'rgba(255,255,255,.18)';q.fillRect(x,y,1,1);}
+    const concrete=new THREE.CanvasTexture(c);concrete.colorSpace=THREE.SRGBColorSpace;concrete.wrapS=concrete.wrapT=THREE.RepeatWrapping;
+    const ground=architecture.root.getObjectByName('Suelo_Real');if(ground){const t=concrete.clone();t.repeat.set(260,260);t.needsUpdate=true;ground.material.map=t;ground.material.color.set('#d3d3ce');ground.material.needsUpdate=true;}
+    const sidewalks=architecture.root.getObjectByName('Veredas_Reales');if(sidewalks){const t=concrete.clone();t.repeat.set(3,3);t.needsUpdate=true;sidewalks.material.map=t;sidewalks.material.color.set('#e1e2dc');sidewalks.material.needsUpdate=true;}
+  }
   cityWorld.city.visible=false;
   for(const p of cityWorld.people){scene.add(p.mesh);if(cityWorld.real)continue;if(Math.abs(p.mesh.position.x+84)<.1)p.mesh.position.x=-89.5;else{const n=cityWorld.roads.reduce((a,b)=>Math.abs(b-p.mesh.position.x)<Math.abs(a-p.mesh.position.x)?b:a);if(Math.abs(p.mesh.position.x-n)>13&&Math.abs(p.mesh.position.x-n)<17)p.mesh.position.x=n+Math.sign(p.mesh.position.x-n)*10.5;}}
   for(const p of cityWorld.breakables){if(p.carried||p.instanced)continue;scene.add(p.mesh);if(!p.parts&&p.x< -108&&p.x> -113){p.x=-106.5;p.mesh.position.x=p.x;}}
@@ -213,7 +222,9 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
   }
   return {
     update(dt){
-      updateLighting();const speed=getState().speed;for(const w of courierMoto.wheelPivots)w.rotation.x-=speed*dt/.44;
+      updateLighting();
+      if(cityWorld.real){const phase=(performance.now()/1000)%14;for(const [name,on] of [['Semaforo_Rojo_Real',phase<6],['Semaforo_Ambar_Real',phase>=12],['Semaforo_Verde_Real',phase>=6&&phase<12]]){const lamp=architecture.materials.get(name);if(lamp)lamp.emissiveIntensity=on?1.1:.04;}}
+      const speed=getState().speed;for(const w of courierMoto.wheelPivots)w.rotation.x-=speed*dt/.44;
       lodTimer+=dt;if(lodTimer>.7){assignCrowd();updateStreetLights();lodTimer=0;}
       for(const slot of pool)if(slot.person)slot.mixer.update(dt*(slot.person.walk?.8:1));
       premiumCars.forEach((item,i)=>{item.root.position.copy(item.car.mesh.position);item.root.rotation.copy(item.car.mesh.rotation);item.root.updateMatrixWorld(true);

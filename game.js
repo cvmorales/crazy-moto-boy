@@ -1,14 +1,14 @@
 import * as THREE from './vendor/three.module.js';
-import {buildCity} from './city.js?v=0.32';
-import {buildRealCity} from './real-city.js?v=0.32';
-import {nearestSegment,routeBetween} from './real-network.js?v=0.32';
-import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.32';
-import {createArcadeEffects} from './effects.js?v=0.32';
-import {actorFactory} from './actors.js?v=0.32';
-import {createStreetProps} from './art/street-props.js?v=0.32';
-import {createTouchDrive} from './touch-drive.js?v=0.32';
-import {drawNavigationMap} from './navigation-map.js?v=0.32';
-import {installGameHost} from './android-host.js?v=0.32';
+import {buildCity} from './city.js?v=0.33';
+import {buildRealCity} from './real-city.js?v=0.33';
+import {nearestSegment,routeBetween} from './real-network.js?v=0.33';
+import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.33';
+import {createArcadeEffects} from './effects.js?v=0.33';
+import {actorFactory} from './actors.js?v=0.33';
+import {createStreetProps} from './art/street-props.js?v=0.33';
+import {createTouchDrive} from './touch-drive.js?v=0.33';
+import {drawNavigationMap} from './navigation-map.js?v=0.33';
+import {installGameHost} from './android-host.js?v=0.33';
 
 const $ = (id) => document.getElementById(id);
 const isPilot=document.body.dataset.pilot==='true';
@@ -498,7 +498,7 @@ function animate(now) {
   if(state.comboTime<=0)$('combo').classList.add('hidden');
   for(const p of people){
     if(p.waiting){p.arm.rotation.z=-2.5+Math.sin(clock*7)*.4;p.mesh.rotation.y=Math.atan2(state.x-p.mesh.position.x,state.z-p.mesh.position.z);}
-    else if(p.walk){const stride=clock*3+p.phase;p.leftLeg.rotation.x=Math.sin(stride)*.32;p.rightLeg.rotation.x=-Math.sin(stride)*.32;p.leftArm.rotation.x=-Math.sin(stride)*.25;p.arm.rotation.x=Math.sin(stride)*.25;p.mesh.position.z=p.baseZ+Math.sin(clock*.2+p.phase)*7;p.mesh.rotation.y=Math.cos(clock*.2+p.phase)>0?0:Math.PI;}
+    else if(p.walk){const stride=clock*3+p.phase;p.leftLeg.rotation.x=Math.sin(stride)*.32;p.rightLeg.rotation.x=-Math.sin(stride)*.32;p.leftArm.rotation.x=-Math.sin(stride)*.25;p.arm.rotation.x=Math.sin(stride)*.25;if(realMode&&Number.isFinite(p.walkDx)){const sway=Math.sin(clock*.2+p.phase)*3;p.mesh.position.x=p.baseX+p.walkDx*sway;p.mesh.position.z=p.baseZ+p.walkDz*sway;p.mesh.rotation.y=Math.atan2(p.walkDx,p.walkDz)+(Math.cos(clock*.2+p.phase)>0?0:Math.PI);}else{p.mesh.position.z=p.baseZ+Math.sin(clock*.2+p.phase)*7;p.mesh.rotation.y=Math.cos(clock*.2+p.phase)>0?0:Math.PI;}}
     else p.arm.rotation.z=-.12;
   }
   if(premiumLayer)premiumLayer.update(state.phase==='paused'?0:dt);
@@ -527,7 +527,7 @@ camera.position.set(...startZone().preview);camera.lookAt(...startZone().look);
 renderer.render(scene,camera);requestAnimationFrame(animate);
 if(isPilot){
   $('loading').innerHTML='<span class="loader"></span> Cargando';
-  import('./premium.js?v=0.32').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
+  import('./premium.js?v=0.33').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
     console.error('No se pudo cargar la zona piloto',error);
     $('loading').innerHTML='<div style="max-width:330px;line-height:1.8;text-align:center">No se pudieron cargar los modelos de la zona piloto. <br><button id="retry-assets" class="start-button">REINTENTAR ↗</button></div>';
     $('retry-assets').onclick=()=>window.location.reload();

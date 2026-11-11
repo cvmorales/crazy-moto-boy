@@ -1,7 +1,9 @@
-import {realMapData} from './real-map-data.js?v=0.32';
-import {createRealWorld} from './real-world.js?v=0.32';
-import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.32';
-import {actorFactory} from './actors.js?v=0.32';
+import {realMapData} from './real-map-data.js?v=0.33';
+import {createRealWorld} from './real-world.js?v=0.33';
+import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.33';
+import {actorFactory} from './actors.js?v=0.33';
+import {addRealLandmarks} from './art/real-landmarks.js?v=0.33';
+import {addRealStreetLife} from './art/real-street-life.js?v=0.33';
 
 // Construct gameplay objects on a connected part of the real street graph.
 export function buildRealCity({THREE,scene,material,random}){
@@ -36,15 +38,27 @@ export function buildRealCity({THREE,scene,material,random}){
   if(homeCandidates.length<6)throw new Error('No hay destinos separados de los comercios');
   for(let i=0;i<6;i++){const h=network.nodes.get(homeCandidates[Math.floor((i+.5)*homeCandidates.length/6)]),recipient=person(h.x+2,h.z+2,true);homes.push({name:'Entrega en Córdoba',drop:[h.x,h.z],recipient,address:'Nueva Córdoba',personName:['Sofi','Nico','Mica','Lauti','Flor','Juan'][i]});}
 
-  for(let i=0;i<96;i++){const id=connected[(i*13)%connected.length],p=network.nodes.get(id);person(p.x+(i%2?5:-5),p.z+((i%3)-1)*4);}
+  for(let i=0;i<150;i++){
+    const id=connected[(i*13)%connected.length],p=network.nodes.get(id),seg=nearestSegment(network,p).segment,dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length;
+    let side=i%2?1:-1,x=p.x-side*dz*7,z=p.z+side*dx*7;if(real.blocked(x,z)){side=-side;x=p.x-side*dz*7;z=p.z+side*dx*7;}if(real.blocked(x,z)){x=p.x;z=p.z;}
+    const pedestrian=person(x,z);pedestrian.baseX=x;pedestrian.walkDx=dx;pedestrian.walkDz=dz;
+  }
   const actorGroups=new Map();
   for(const p of people)p.mesh.traverse(m=>{if(!m.isMesh)return;const key=m.geometry.uuid+':'+m.material.uuid;if(!actorGroups.has(key))actorGroups.set(key,[]);actorGroups.get(key).push({mesh:m,root:p.mesh});m.visible=false;});
   const batches=[],zero=new THREE.Matrix4().makeScale(0,0,0);
   for(const items of actorGroups.values()){const batch=new THREE.InstancedMesh(items[0].mesh.geometry,items[0].mesh.material,items.length);scene.add(batch);batches.push({batch,items});}
   function updateCrowds(){for(const p of people)p.mesh.updateMatrixWorld(true);for(const {batch,items} of batches){items.forEach((o,i)=>batch.setMatrixAt(i,o.root.visible&&!o.root.userData.highDetail?o.mesh.matrixWorld:zero));batch.instanceMatrix.needsUpdate=true;}}
-  const startCandidates=connected.filter(id=>{const p=network.nodes.get(id);return restaurants.every(shop=>Math.hypot(p.x-shop.pickup[0],p.z-shop.pickup[1])>45);});
-  if(startCandidates.length<3)throw new Error('No hay inicios alejados de los retiros');
-  const starts=[0,1,2].map(i=>{const p=network.nodes.get(startCandidates[Math.floor((i+.5)*startCandidates.length/3)]),seg=nearestSegment(network,p).segment;const angle=Math.atan2(-(seg.b.x-seg.a.x),-(seg.b.z-seg.a.z));return {x:p.x,z:p.z,angle,look:[p.x-Math.sin(angle)*30,3,p.z-Math.cos(angle)*30],preview:[p.x+Math.sin(angle)*25,20,p.z+Math.cos(angle)*25]};});
-  const realRoot=real.createScene(),realMaterials=new Map();realRoot.traverse(m=>{if(m.isMesh&&m.material?.name)realMaterials.set(m.material.name,m.material);});
+  const startCandidates=[];
+  for(const id of connected){const p=network.nodes.get(id);if(restaurants.some(shop=>Math.hypot(p.x-shop.pickup[0],p.z-shop.pickup[1])<60))continue;
+    for(const edge of network.adj.get(id)||[]){if(edge.length<35)continue;const target=network.nodes.get(edge.to),dx=(target.x-p.x)/edge.length,dz=(target.z-p.z)/edge.length;
+      let clear=true;for(let d=0;d<=30;d+=2)if(real.blocked(p.x+dx*d,p.z+dz*d)){clear=false;break;}if(!clear)continue;
+      const x=p.x+dx*5,z=p.z+dz*5,angle=Math.atan2(-dx,-dz);startCandidates.push({x,z,angle,look:[x+dx*30,3,z+dz*30],preview:[x-dx*25,20,z-dz*25]});break;
+    }
+  }
+  if(startCandidates.length<3)throw new Error('No hay suficientes inicios transitables');
+  startCandidates.sort((a,b)=>a.z-b.z);
+  const starts=[0,1,2].map(i=>startCandidates[Math.floor((i+.5)*startCandidates.length/3)]);
+
+  const realRoot=real.createScene();addRealLandmarks(realRoot,real);addRealStreetLife(realRoot,{network,realWorld:real});const realMaterials=new Map();realRoot.traverse(m=>{if(m.isMesh&&m.material?.name)realMaterials.set(m.material.name,m.material);});
   return {real:true,realWorld:real,network,realArt:{root:realRoot,materials:realMaterials,streetLamps:realRoot.userData.streetLamps},starts,city,colliders,roads:[-400,-300,-200,-100,0,100,200,300,400],limit:1600,canalX:99999,restaurants,homes,breakables,people,buildings:[],label:()=>{},updateCrowds};
 }

@@ -90,11 +90,25 @@ export function createStreetProps({THREE,scene,world}){
   }
   if(world.real){
     // Place small breakables along the actual road segments instead of the old grid.
-    const types=['cartel','maceta','papelera','conoobra','cajonobra','silla','mesa'];let placed=0;
-    for(const segment of world.network.segments){if(segment.length<25||placed>=180)continue;
-      const dx=segment.b.x-segment.a.x,dz=segment.b.z-segment.a.z,len=segment.length,side=placed%2?1:-1;
-      const x=(segment.a.x+segment.b.x)/2-side*dz/len*4.2,z=(segment.a.z+segment.b.z)/2+side*dx/len*4.2;
-      if(world.realWorld.blocked(x,z))continue;make(types[placed%types.length],x,z,Math.atan2(dx,dz));placed++;
+    const types=['cartel','maceta','papelera','conoobra','cajonobra','silla','mesa','banco','flores','carrito','puesto','parasol','revistas'];let placed=0;
+    for(const segment of world.network.segments){if(segment.length<20||placed>=360)continue;
+      const dx=segment.b.x-segment.a.x,dz=segment.b.z-segment.a.z,len=segment.length;
+      for(const side of [-1,1]){if(placed>=360)break;
+        const offset=segment.highway==='primary'?8.5:7.2;
+        const x=(segment.a.x+segment.b.x)/2-side*dz/len*offset,z=(segment.a.z+segment.b.z)/2+side*dx/len*offset;
+        if(world.realWorld.blocked(x,z))continue;make(types[placed%types.length],x,z,Math.atan2(dx,dz));placed++;
+      }
+    }
+    // Reinforce street activity around starting points and recognizable places.
+    const anchors=[...world.starts,{x:0,z:0},world.realArt.root.userData.landmarkPositions.pastor,world.realArt.root.userData.landmarkPositions.plaza];
+    for(const anchor of anchors){let local=0;
+      for(const segment of world.network.segments){if(local>=12||segment.length<18)continue;const dx=segment.b.x-segment.a.x,dz=segment.b.z-segment.a.z,len=segment.length,mx=(segment.a.x+segment.b.x)/2,mz=(segment.a.z+segment.b.z)/2;if(Math.hypot(mx-anchor.x,mz-anchor.z)>85)continue;
+        for(const side of [-1,1]){const x=mx-side*dz/len*7.5,z=mz+side*dx/len*7.5;if(world.realWorld.blocked(x,z))continue;make(['banco','cartel','maceta','flores','carrito','papelera'][local%6],x,z,Math.atan2(dx,dz));local++;if(local>=12)break;}
+      }
+    }
+    // Cafe furniture near actual game pickup kiosks, kept off solid buildings.
+    for(const shop of world.restaurants){if(!shop.mesh.parent)continue;const x=shop.mesh.position.x,z=shop.mesh.position.z;
+      for(const [type,dx,dz] of [['mesa',4,0],['silla',3,-1.4],['silla',5,1.4],['parasol',4,0],['cartel',-3,0]])if(!world.realWorld.blocked(x+dx,z+dz))make(type,x+dx,z+dz);
     }
   }else{
   world.restaurants.forEach(s=>cafe(...s.pickup));

@@ -1,4 +1,4 @@
-import {nearestSegment} from './real-network.js?v=0.32';
+import {nearestSegment} from './real-network.js?v=0.33';
 // Traffic selects a permitted outgoing graph edge; no arbitrary grid lanes.
 export function createTraffic(network,point,random=Math.random){
  const snap=nearestSegment(network,point);if(!snap)return null;const s=snap.segment,reverse=s.oneway==='-1';

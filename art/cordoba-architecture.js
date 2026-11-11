@@ -1,7 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import {RoundedBoxGeometry} from '../vendor/addons/RoundedBoxGeometry.js';
 import {mergeGeometries} from '../vendor/addons/utils/BufferGeometryUtils.js';
-import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.32';
+import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.33';
 
 /** Original, editable architectural set for the La Cañada / Bv. San Juan pilot.
  * Real landmarks are interpreted at arcade scale. Units are metres. */
