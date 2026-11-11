@@ -1,7 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import {RoundedBoxGeometry} from '../vendor/addons/RoundedBoxGeometry.js';
 import {mergeGeometries} from '../vendor/addons/utils/BufferGeometryUtils.js';
-import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.26';
+import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.27';
 
 /** Original, editable architectural set for the La Cañada / Bv. San Juan pilot.
  * Real landmarks are interpreted at arcade scale. Units are metres. */
@@ -33,6 +33,7 @@ export function createCordobaArchitecture(world,maps={}){
     const floors=Math.ceil(height/3.6),key=color+':'+floors+':'+variant;if(facadeLods.has(key))return facadeLods.get(key);
     const canvas=document.createElement('canvas');canvas.width=512;canvas.height=1024;const p=canvas.getContext('2d');
     p.fillStyle=color;p.fillRect(0,0,512,1024);
+    const sunlight=p.createLinearGradient(0,0,512,0);sunlight.addColorStop(0,'rgba(255,244,213,.19)');sunlight.addColorStop(.55,'rgba(255,248,231,.04)');sunlight.addColorStop(1,'rgba(46,38,29,.18)');p.fillStyle=sunlight;p.fillRect(0,0,512,1024);
     // Plaster grain, seams, window recesses and balcony bands give the broad
     // city blocks texture without adding individual meshes to every building.
     let noise=(floors*719+variant*3571)>>>0;const random=()=>{noise=(noise*1664525+1013904223)>>>0;return noise/4294967296;};
@@ -44,9 +45,10 @@ export function createCordobaArchitecture(world,maps={}){
     for(let row=0;row<floors;row++)for(let col=0;col<6;col++){
       const x=col*85+20,y=row*sh+sh*.17,w=44,h=sh*.61;
       p.fillStyle='rgba(31,31,29,.38)';p.fillRect(x-5,y-4,w+11,h+9);
-      p.fillStyle='#d7c8ae';p.fillRect(x-3,y-3,w+6,h+6);
+      p.fillStyle='#d7c8ae';p.fillRect(x-3,y-3,w+6,h+6);p.fillStyle='rgba(255,247,225,.55)';p.fillRect(x-3,y-3,w+6,2);p.fillRect(x-3,y-3,2,h+6);p.fillStyle='rgba(49,41,33,.32)';p.fillRect(x+w+1,y,2,h+2);
       p.fillStyle=shades[(row*3+col+variant)%shades.length];p.fillRect(x,y,w,h);
-      p.fillStyle='rgba(165,208,220,.19)';p.fillRect(x+3,y+3,w*.36,h*.68);
+      const reflection=p.createLinearGradient(x,y,x+w,y+h);reflection.addColorStop(0,'rgba(190,225,233,.48)');reflection.addColorStop(.42,'rgba(147,191,207,.06)');reflection.addColorStop(1,'rgba(8,25,35,.30)');p.fillStyle=reflection;p.fillRect(x+2,y+2,w-4,h-4);
+      p.fillStyle='rgba(221,236,228,.22)';p.beginPath();p.moveTo(x+4,y+3);p.lineTo(x+15,y+3);p.lineTo(x+w*.65,y+h-3);p.lineTo(x+w*.4,y+h-3);p.closePath();p.fill();
       p.fillStyle='rgba(16,31,39,.45)';p.fillRect(x,y,w,Math.max(2,h*.12));
       p.fillStyle='#c5b9a4';p.fillRect(x+w*.49,y,2,h);p.fillRect(x,y+h*.52,w,2);
       p.fillStyle='#e4d4ba';p.fillRect(x-6,y+h+1,w+12,4);
@@ -244,7 +246,16 @@ export function createCordobaArchitecture(world,maps={}){
         const x=(i-(count-1)/2)*bay;
         if(i===Math.floor(count/2)){box(2.2,3,.12,shadow,x,1.6,.08,face);for(const s of [-1,1])box(.1,3,.20,wood,x+s*1.05,1.6,.2,face);box(2.5,.2,.6,cream,x,3.25,.2,face);}
         else{box(bay-.8,2.6,.12,glass,x,1.65,.10,face);box(.1,2.6,.2,iron,x,1.65,.18,face);}
-        for(let y=5.4;y<h-1;y+=3.6)window(x,y,.08,Math.min(2.25,bay-1.3),2.15,face,{balcony:h>15&&(i%2===0)});
+        for(let y=5.4;y<h-1;y+=3.6){
+          const hasBalcony=h>15&&(i%2===0);window(x,y,.08,Math.min(2.25,bay-1.3),2.15,face,{balcony:hasBalcony});
+          if(hasBalcony&&((i+Math.round(y))%3===0)){
+            box(1.0,.25,.3,roofMat,x,y-.92,1.05,face);
+            for(const dx of [-.3,0,.3])box(.2,.32,.2,green,x+dx,y-.68,1.05,face);
+          }
+          if(!hasBalcony&&((i+Math.round(y))%4===0)){
+            box(.75,.48,.35,cream,x+1.3,y-.7,.34,face);box(.52,.3,.02,iron,x+1.3,y-.7,.53,face);
+          }
+        }
       }
       // A lived-in ground floor: recessed entrances, shop fronts and awnings.
       // The detail is limited to the walkable Güemes / La Cañada blocks.

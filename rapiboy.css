@@ -70,3 +70,16 @@ body.native-app #intro .menu-brand span{display:none}
 body:not(.playing) #intro h1{font-size:clamp(48px,12vw,68px)!important;margin:20px 0 24px!important}
 body:not(.playing) #intro .start-button{height:54px;margin:0}
 @media(max-height:450px){body:not(.playing) #intro{padding:16px 22px}body:not(.playing) #intro h1{font-size:40px!important;margin:9px 0 12px!important}body:not(.playing) #intro .start-button{height:42px}}
+
+/* Arcade title screen: compact, legible and adapted to short mobile screens. */
+body:not(.playing) #intro{background:#142638;color:#fff8db;border:3px solid #f9d735;border-radius:4px;box-shadow:7px 7px 0 #09131dc9,0 14px 36px #0008;padding:25px;overflow:hidden}
+body:not(.playing) #intro:before{content:"";position:absolute;top:0;left:0;right:0;height:8px;background:repeating-linear-gradient(90deg,#f7d333 0 11px,#17283a 11px 22px)}
+body:not(.playing) #intro .eyebrow{color:#ffdc42;font-size:10px;letter-spacing:2px;margin-top:4px}
+body:not(.playing) #intro .eyebrow .small-line{background:#ffdc42}
+body:not(.playing) #intro h1{color:#fff7df!important;font-style:italic!important;line-height:.88!important;letter-spacing:-1px;text-shadow:3px 3px 0 #ef6133,5px 5px 0 #09131d;margin:21px 0 26px!important}
+body:not(.playing) #intro h1 span{color:#ffda36!important;background:none;-webkit-text-stroke:0}
+body:not(.playing) #intro .start-button{height:58px;background:#f6d231;color:#152738;border:2px solid #fff2a4;border-radius:3px;box-shadow:0 5px 0 #bd8717;font:italic 900 24px 'Barlow Condensed',sans-serif;letter-spacing:1px}
+body:not(.playing) #intro .start-button:hover{background:#ffea72}
+body:not(.playing) #intro .start-button:active{transform:translateY(3px);box-shadow:0 2px 0 #bd8717}
+body:not(.playing) #intro .start-button span{font-size:28px}
+@media(max-height:450px){body:not(.playing) #intro{padding:13px 20px}body:not(.playing) #intro h1{font-size:40px!important;margin:9px 0 13px!important}body:not(.playing) #intro .start-button{height:43px;font-size:20px}}
