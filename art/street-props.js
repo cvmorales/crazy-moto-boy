@@ -66,6 +66,17 @@ export function createStreetProps({THREE,scene,world}){
       p.r=.65;c(green,0,.7,0,.52,1.4);c(metal,0,1.42,0,.56,.12);b(metal,0,1.15,-.51,.6,.25,.04);
     }else if(type==='bolardo'){
       p.r=.45;c(metal,0,.6,0,.15,1.2);c(cream,0,.95,0,.17,.15);c(metal,0,.08,0,.3,.13);
+    }else if(type==='conoobra'){
+      p.r=.6;b(metal,0,.08,0,1,.12,1);c(red,0,.65,0,.4,1.15);c(cream,0,.72,0,.34,.16);
+    }else if(type==='vallaobra'){
+      p.r=1.6;for(const x of [-1.2,1.2]){b(metal,x,.55,0,.12,1.1,.6);b(metal,x,.08,0,.5,.12,.7);}
+      for(const y of [.65,1.1]){b(red,0,y,0,2.9,.32,.12);for(const x of [-.8,0,.8])b(cream,x,y,-.07,.27,.32,.04,.45);}
+    }else if(type==='barrilobra'){
+      p.r=.7;c(red,0,.65,0,.5,1.3);for(const y of [.3,1])c(cream,0,y,0,.52,.16);c(metal,0,1.33,0,.48,.08);
+    }else if(type==='cartelobra'){
+      p.r=.8;b(metal,0,.85,0,.09,1.7,.1);b(metal,0,.08,0,.9,.12,.8);b(cream,0,1.7,0,1.5,1.25,.12);b(red,0,1.72,-.07,1.28,.22,.03,-.65);b(red,0,2.08,-.07,1.28,.22,.03,-.65);
+    }else if(type==='cajonobra'){
+      p.r=.8;b(wood,0,.5,0,1.3,1,1);for(const x of [-.45,.45])b(cream,x,.5,-.51,.1,.95,.05);b(cream,0,.5,-.53,1.2,.1,.05);
     }else if(type==='bolsa'){
       p.r=.65;p.mesh.position.y=1.1;b('#d5ab68',0,0,0,.55,.65,.38);for(const x of [-.14,.14])b(cream,x,.4,0,.045,.25,.045);b(cream,0,.53,0,.32,.045,.045);
     }else if(type==='bandeja'){
@@ -78,6 +89,17 @@ export function createStreetProps({THREE,scene,world}){
     make('cartel',x+2,z-4);make('maceta',x+5,z+27);make('papelera',x+3,z-27);
   }
   world.restaurants.forEach(s=>cafe(...s.pickup));
+  // Breakable commercial displays, outdoor-style tables and seating inside
+  // the gallery. The through route has no invisible building collider.
+  for(const gallery of world.galleries||[]){
+    for(let x=gallery.x-27;x<=gallery.x+27;x+=9){
+      for(const side of [-1,1]){
+        const type=side<0?['flores','ropa','puesto','revistas'][Math.round((x-gallery.x+27)/9)%4]:['mesa','cartel','carrito','perchero'][Math.round((x-gallery.x+27)/9)%4];
+        const prop=make(type,x,gallery.z+side*5.5,side<0?0:Math.PI);prop.gallery=gallery.name;
+        if(type==='mesa'){const chair=make('silla',x+2,gallery.z+side*6.1);chair.gallery=gallery.name;}
+      }
+    }
+  }
   // Street markets on both sides of the grid, with clear crossings and entrances.
   const marketTypes=['flores','ropa','revistas','carrito','puesto','perchero'];
   let market=0;
@@ -97,6 +119,12 @@ export function createStreetProps({THREE,scene,world}){
     if(world.colliders.some(c=>Math.abs(c.x-x)<c.w+1&&Math.abs(c.z-z)<c.d+1))continue;
     make(Math.abs(Math.round((n+z)/5))%3===0?'banco':'cartel',x,z,Math.PI/2);
     make('maceta',x,z+4);
+  }
+  // Signposted work sites on several streets. Every visible barrier, cone,
+  // barrel and crate is a normal smashable prop; a lane remains open.
+  for(const road of [-200,0,100,200])for(const along of [-250,-50,150]){
+    const entries=[['cartelobra',-4,-18],['conoobra',-4,-12],['conoobra',-4,-6],['vallaobra',-3,0],['barrilobra',1,4],['cajonobra',-3,8],['conoobra',-4,14]];
+    for(const [type,dx,dz] of entries){const x=road+dx,z=along+dz;if(!usable(x,z,.4))continue;const p=make(type,x,z);p.roadwork=true;}
   }
   // Both banks of each La Cañada bridge have breakable objects near the
   // edges of the approach. The middle of the carriageway remains clear.

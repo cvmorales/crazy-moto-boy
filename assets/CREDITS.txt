@@ -52,3 +52,7 @@ El distrito comprime distancias y adapta las calles al formato arcade.
 
 Menú Rapiboy: logo del sitio oficial https://rapiboy.com/Content/publica3/assets/brand/rapiboy.svg. Paleta violeta #2C2B67 y amarillo #FBDB6E observada en https://rapiboy.com/.
 Fuentes Barlow Condensed y DM Sans incluidas localmente, SIL Open Font License. Ver fonts/BARLOW-OFL.txt y fonts/DM-SANS-OFL.txt. Fuente: Google Fonts.
+
+Materiales de fachadas: brick_wall_005 y rectangular_facade_tiles, Poly Haven, CC0.
+https://polyhaven.com/a/brick_wall_005
+https://polyhaven.com/a/rectangular_facade_tiles

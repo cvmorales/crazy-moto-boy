@@ -2,11 +2,11 @@ import * as THREE from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/addons/loaders/GLTFLoader.js';
 import {HDRLoader} from './vendor/addons/loaders/HDRLoader.js';
 import {clone as cloneRig} from './vendor/addons/utils/SkeletonUtils.js';
-import {poseCourierDriver} from './art/courier-pose.js?v=0.27';
+import {poseCourierDriver} from './art/courier-pose.js?v=0.28';
 import {Sky} from './vendor/addons/Sky.js';
-import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.27';
-import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.27';
-import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.27';
+import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.28';
+import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.28';
+import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.28';
 
 export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState}) {
   const gltf=new GLTFLoader(),textures=new THREE.TextureLoader();
@@ -32,8 +32,9 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
   roadColor.colorSpace=THREE.SRGBColorSpace;
   for(const t of [roadColor,roadNormal,roadRough]){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;}
   const [calicanto,stucco,paving]=await Promise.all(['calicanto','stucco','paving'].map(name=>textures.loadAsync('./assets/textures/'+name+'-color.jpg')));
+  const [facadeBrick,facadeTile]=await Promise.all(['brick','tile'].map(name=>textures.loadAsync('./assets/textures/facade-'+name+'.jpg')));
   for(const t of [calicanto,stucco,paving]){t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;}
-  const architecture=createCordobaArchitecture(cityWorld,{calicanto,stucco,paving,road:roadColor,roadNormal,roadRough});
+  const architecture=createCordobaArchitecture(cityWorld,{calicanto,stucco,paving,facadeBrick,facadeTile,road:roadColor,roadNormal,roadRough});
   const landscape=createCanopyStreet(cityWorld,{});
   cityWorld.city.visible=false;
   for(const p of cityWorld.people){scene.add(p.mesh);if(Math.abs(p.mesh.position.x+84)<.1)p.mesh.position.x=-89.5;else{const n=cityWorld.roads.reduce((a,b)=>Math.abs(b-p.mesh.position.x)<Math.abs(a-p.mesh.position.x)?b:a);if(Math.abs(p.mesh.position.x-n)>13&&Math.abs(p.mesh.position.x-n)<17)p.mesh.position.x=n+Math.sign(p.mesh.position.x-n)*10.5;}}
@@ -51,9 +52,13 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
     const clone=cloneRig(source.scene);clone.updateMatrixWorld(true);
     const bounds=new THREE.Box3().setFromObject(clone),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
     const scale=height/size.y;const root=new THREE.Group();clone.scale.multiplyScalar(scale);clone.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);root.add(clone);
-    clone.traverse(m=>{if(m.isMesh){m.castShadow=false;m.receiveShadow=true;if(m.material){m.material=m.material.clone();m.material.roughness=.78;if(clothingColor&&/^(Purple|Red_Dark|Red|LimeGreen)$/i.test(m.material.name))m.material.color.set(clothingColor);if(clothingColor&&/^Skin$/i.test(m.material.name))m.material.color.set(['#f1c3a2','#d79a72','#b87553','#875138','#ecc2a1','#a96749'][variation%6]);if(clothingColor&&/^Hair$/i.test(m.material.name))m.material.color.set(['#34231b','#272224','#68452d','#201b1a','#a07043','#3b2723'][variation%6]);}}});
+    clone.traverse(m=>{if(m.isMesh){m.castShadow=false;m.receiveShadow=true;if(m.material){m.material=m.material.clone();m.material.roughness=.78;if(clothingColor&&/^(Purple|Red_Dark|Red|LimeGreen)$/i.test(m.material.name))m.material.color.set(clothingColor);if(clothingColor&&/^Skin$/i.test(m.material.name))m.material.color.set(['#f1c3a2','#d79a72','#b87553','#875138','#ecc2a1','#a96749'][variation%6]);if(clothingColor&&/^Hair$/i.test(m.material.name))m.material.color.set(['#34231b','#272224','#68452d','#201b1a','#a07043','#3b2723'][variation%6]);if(clothingColor&&/^(LightBlue|LightBrown|Brown)$/i.test(m.material.name))m.material.color.set(['#33485c','#665448','#252c3a','#798084','#4b4a49','#596b78'][variation%6]);}}});
     return {root,clone,scale,source};
   }
+  // Details are shared by every traffic template and collected into the existing
+  // instanced batches; they are placed in vehicle metres, after model fitting.
+  const carDetailBox=new THREE.BoxGeometry(1,1,1);
+  const carDetailMaterials={dark:new THREE.MeshStandardMaterial({color:'#242c30',roughness:.65}),chrome:new THREE.MeshStandardMaterial({color:'#b5bec0',metalness:.75,roughness:.3}),plate:new THREE.MeshStandardMaterial({color:'#e9e8da',roughness:.65})};
   function fitVehicle(source,length,paint){
     const model=source.scene.clone(true);model.updateMatrixWorld(true);
     const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
@@ -67,7 +72,21 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
       if(/Window/i.test(original.name)){m.material.color.set('#29475a');m.material.metalness=.35;m.material.roughness=.18;}
       if(/Headlights/i.test(original.name)){m.material.emissive=new THREE.Color('#e2c988');m.material.emissiveIntensity=.24;}
       if(/TailLights/i.test(original.name)){m.material.emissive=new THREE.Color('#a3190f');m.material.emissiveIntensity=.22;}
-    });return root;
+    });
+    if(paint){
+      const width=Math.min(size.x,size.z)*scale, end=length*.5;
+      function detail(w,h,d,x,y,z,mat){const m=new THREE.Mesh(carDetailBox,mat);m.scale.set(w,h,d);m.position.set(x,y,z);root.add(m);}
+      for(const side of [-1,1]){
+        const x=side*(width*.5+.015);
+        detail(.055,.12,.32,x,.8,-.38,carDetailMaterials.dark);
+        detail(.035,.055,.23,x,.81,.38,carDetailMaterials.chrome);
+        detail(.025,.7,.035,x,.55,.12,carDetailMaterials.dark);
+      }
+      detail(.53,.15,.035,0,.4,end-.05,carDetailMaterials.plate);
+      detail(.53,.15,.035,0,.4,-end+.05,carDetailMaterials.plate);
+      detail(width*.58,.09,.04,0,.25,end-.03,carDetailMaterials.dark);
+    }
+    return root;
   }
   // Shared pieces and materials keep the richer delivery trucks batchable.
   const truckBox=new THREE.BoxGeometry(1,1,1);

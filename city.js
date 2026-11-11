@@ -1,12 +1,13 @@
-import {actorFactory} from './actors.js?v=0.27';
+import {actorFactory} from './actors.js?v=0.28';
 // Córdoba arcade: original textured geometry, modelled from photographic references.
 // The street layout is adapted for driving, rather than a navigation map.
 export function buildCity({THREE,scene,box,cylinder,sphere,material,random,pilot=false}) {
   const city=new THREE.Group();scene.add(city);
   const colliders=[],breakables=[],people=[],restaurants=[],homes=[],buildings=[];
+  const galleries=[{x:50,z:50,length:76,width:18,name:"GALERÍA DEL CENTRO"},{x:-50,z:-250,length:76,width:18,name:"PASEO DE LAS FLORES"}];
   const actors=actorFactory(THREE,material);
-  const roads=Array.from({length:pilot?7:11},(_,i)=>(i-(pilot?3:5))*100);
-  const limit=pilot?325:525,canalX=pilot?-120:-150,span=pilot?670:1070;
+  const roads=Array.from({length:pilot?9:11},(_,i)=>(i-(pilot?4:5))*100);
+  const limit=pilot?425:525,canalX=pilot?-120:-150,span=pilot?870:1070;
   function texture(size,paint,rx=1,ry=1) {
     const c=document.createElement('canvas');c.width=c.height=size;
     const ctx=c.getContext('2d');paint(ctx,size);
@@ -102,10 +103,10 @@ export function buildCity({THREE,scene,box,cylinder,sphere,material,random,pilot
     }
     if(h<17){box(city,w*.9,.25,2,'#a74734',x,4,z+d/2+.6);box(city,2.5,3,.12,'#253a43',x,1.8,z+d/2+.1);}
   }
-  const special=new Set(['50,-150','50,-50','-50,50','150,50','150,150','-50,150','-250,-50','250,250','-350,-250','450,-350','350,150','-350,350','50,450','250,-250',...(pilot?['250,-150','150,250','-250,250','50,250','-250,-250']:[])]);
+  const special=new Set(['50,-150','50,-50','-50,50','150,50','150,150','-50,150','-250,-50','250,250','-350,-250','450,-350','350,150','-350,350','50,450','250,-250','50,50','-50,-250','50,350','-250,50','250,-50',...(pilot?['250,-150','150,250','-250,250','50,250','-250,-250']:[])]);
   for(let i=0;i<10;i++)for(let j=0;j<10;j++){
     const x=-450+i*100,z=-450+j*100;
-    if(pilot&&(Math.abs(x)>250||Math.abs(z)>250))continue;
+    if(pilot&&(Math.abs(x)>350||Math.abs(z)>350))continue;
     if(x===canalX)continue;
     box(city,76,.35,76,sidewalkMat,x,.1,z,false);
     if(special.has(`${x},${z}`))continue;
@@ -115,6 +116,22 @@ export function buildCity({THREE,scene,box,cylinder,sphere,material,random,pilot
     }
     if((i+j)%2===0){tree(x-39,z-29,.65);tree(x+39,z+28,.7);}
   }
+  // A real through passage, open at both ends. The two solids leave a
+  // generous central corridor; the art is replaced in the pilot district.
+  for(const gallery of galleries){
+    for(const side of [-1,1]){
+      box(city,gallery.length,7,2,'#d7bd94',gallery.x,3.5,gallery.z+side*10);
+      colliders.push({x:gallery.x,z:gallery.z+side*10,w:gallery.length/2,d:1,galleryWall:true});
+    }
+    box(city,gallery.length,.4,22,'#c0aa87',gallery.x,7,gallery.z);
+    label(gallery.name,gallery.x-gallery.length/2,5,gallery.z,16,'#31534e','#ffefc2',-Math.PI/2);
+  }
+  // New southern district: a compact, driveable interpretation of Plaza España.
+  box(city,67,.2,67,'#638c50',50,.3,350,false);
+  label('PLAZA ESPAÑA',50,2,315,23,'#2b5f55','#fff0ba');
+  // The fountain sits in the median in front of Patio Olmos; both lanes stay open.
+  box(city,4,.5,14,'#bfb096',0,.25,45);
+  colliders.push({x:0,z:45,w:2,d:7,landmark:'Fuente Patio Olmos'});
   // Stone-lined La Cañada with lowered water, retaining walls, walkways and tipas.
   const waterTex=texture(128,(c,n)=>{c.fillStyle='#456943';c.fillRect(0,0,n,n);for(let i=0;i<550;i++){c.fillStyle=random()>.5?'#92b18c66':'#b6c8a444';c.fillRect(random()*128,random()*128,3+random()*18,1);}},1,65);
   box(city,16,.1,span-10,new THREE.MeshPhongMaterial({map:waterTex,shininess:85,color:'#91b6a2'}),canalX,-2,0,false);
@@ -216,6 +233,8 @@ export function buildCity({THREE,scene,box,cylinder,sphere,material,random,pilot
   foodShop('LOMITOS LA CAÑADA',-265,-65,[-295,-65],'#efb62b','LOMITO COMPLETO');
   foodShop('EMPANADAS DE ALBERDI',pilot?-265:-365,-265,[pilot?-295:-395,-265],'#40774b','CRIOLLAS · AL HORNO');
   foodShop('CAFÉ DEL BUEN PASTOR',235,265,[205,265],'#2b658a','CAFÉ · MEDIALUNAS');
+  foodShop('BODEGÓN DE ALBERDI',-265,35,[-295,35],'#a85c39','PLATOS DEL DÍA');
+  foodShop('PARRILLA DEL CENTRO',235,-65,[205,-65],'#567c58','PARRILLA · EMPANADAS');
   // Contiguous neighbours make these food shops part of a city block, rather than empty lots.
   for(const [x,z] of [[-65,125],[-265,-65],[pilot?-265:-365,-265]]){
     building(x+33,z,29,29,16,'#ef8951',false);building(x+17,z+42,62,26,12,'#55bdb0',false);
@@ -304,5 +323,5 @@ export function buildCity({THREE,scene,box,cylinder,sphere,material,random,pilot
     for(const {batch,items} of actorBatches){items.forEach((item,i)=>batch.setMatrixAt(i,item.root.visible&&!item.root.userData.highDetail?item.mesh.matrixWorld:zero));batch.instanceMatrix.needsUpdate=true;}
   }
   updateCrowds();
-  return {city,colliders,roads,limit,canalX,restaurants,homes,breakables,people,buildings,label,updateCrowds};
+  return {city,colliders,roads,limit,canalX,restaurants,homes,breakables,people,buildings,galleries,label,updateCrowds};
 }

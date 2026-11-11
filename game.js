@@ -1,11 +1,11 @@
 import * as THREE from './vendor/three.module.js';
-import {buildCity} from './city.js?v=0.27';
-import {createArcadeEffects} from './effects.js?v=0.27';
-import {actorFactory} from './actors.js?v=0.27';
-import {createStreetProps} from './art/street-props.js?v=0.27';
-import {createTouchDrive} from './touch-drive.js?v=0.27';
-import {drawNavigationMap} from './navigation-map.js?v=0.27';
-import {installGameHost} from './android-host.js?v=0.27';
+import {buildCity} from './city.js?v=0.28';
+import {createArcadeEffects} from './effects.js?v=0.28';
+import {actorFactory} from './actors.js?v=0.28';
+import {createStreetProps} from './art/street-props.js?v=0.28';
+import {createTouchDrive} from './touch-drive.js?v=0.28';
+import {drawNavigationMap} from './navigation-map.js?v=0.28';
+import {installGameHost} from './android-host.js?v=0.28';
 
 const $ = (id) => document.getElementById(id);
 const isPilot=document.body.dataset.pilot==='true';
@@ -159,7 +159,7 @@ for(const side of [-1,1]) {const bar=box(chevron,2.5,.55,.55,material('#e4f073',
 marker.visible=false;
 
 const deliveryJobs=restaurants.map((shop,i)=>{
-  const home=homes[[0,3,1,2][i]];
+  const home=homes[[0,3,1,2][i%4]];
   return {from:shop.name,to:home.name,pickup:shop.pickup,drop:home.drop,reward:4800+i*650,shop,home};
 });
 const jobs=()=>deliveryJobs;
@@ -260,11 +260,11 @@ function modal(content) {
 function closeInfo() {hideModal();if(modalReturn==='playing'){state.phase='playing';audioContext?.resume();}}
 function showHelp() {
   if(controlMode==='touch'){modal('<div class="eyebrow">CÓRDOBA · ARCADE</div><h2 id="modal-title">DOS PULGARES. A LA CALLE.</h2><p>Mantené GAS del lado izquierdo para avanzar. Con el otro dedo usá las flechas de la derecha para doblar. Podés presionar ambos a la vez.</p><div class="control-row">Ir recto <span>GAS sin flechas</span></div><div class="control-row">Frenar <span>Soltá GAS o usá FRENO</span></div><div class="control-row">Turbo <span>Botón ⚡, también acelera</span></div><p>El teclado de PC sigue funcionando: WASD o flechas, espacio y Shift.</p><button class="start-button" id="close-info">DALE, A JUGAR ↗</button>');$('close-info').onclick=closeInfo;return;}
-  modal('<div class="eyebrow">MANUAL DE CALLE / 02</div><h2 id="modal-title">AGARRALE LA MANO.</h2><p>Seguí la flecha y el GPS hasta el círculo amarillo. Frená adentro para recoger y después llegar al destino. Cada trabajo suma plata y 15 segundos al turno.</p><div class="control-row">Acelerar / retroceder <span>W / S &nbsp; o &nbsp; ↑ / ↓</span></div><div class="control-row">Doblar <span>A / D &nbsp; o &nbsp; ← / →</span></div><div class="control-row">Frenar y derrapar <span>ESPACIO</span></div><div class="control-row">Turbo <span>SHIFT</span></div><div class="control-row">Volver a la calle <span>R</span></div><div class="control-row">Pausa <span>ESC</span></div><p>Pasá cerquita del tránsito para ganar propinas. Podés romper cajones, vallas, tachos y mesas: encadená golpes para sumar combos. Los choques no cortan la marcha ni descuentan tiempo. En el celular, usá los botones en pantalla.</p><button class="start-button" id="close-info">LISTO, VAMOS <span>↗</span></button>');
+  modal('<div class="eyebrow">MANUAL DE CALLE / 02</div><h2 id="modal-title">AGARRALE LA MANO.</h2><p>Seguí la flecha y el GPS hasta el círculo amarillo. Frená adentro para recoger y después llegar al destino. Cada trabajo suma puntos y 15 segundos al turno.</p><div class="control-row">Acelerar / retroceder <span>W / S &nbsp; o &nbsp; ↑ / ↓</span></div><div class="control-row">Doblar <span>A / D &nbsp; o &nbsp; ← / →</span></div><div class="control-row">Frenar y derrapar <span>ESPACIO</span></div><div class="control-row">Turbo <span>SHIFT</span></div><div class="control-row">Volver a la calle <span>R</span></div><div class="control-row">Pausa <span>ESC</span></div><p>Pasá cerquita del tránsito para ganar propinas. Podés romper cajones, vallas, tachos y mesas: encadená golpes para sumar combos. Los choques no cortan la marcha ni descuentan tiempo. En el celular, usá los botones en pantalla.</p><button class="start-button" id="close-info">LISTO, VAMOS <span>↗</span></button>');
   $('close-info').onclick=closeInfo;
 }
 function showCity() {
-  modal('<div class="eyebrow">CÓRDOBA CAPITAL / 03</div><h2 id="modal-title">UNA CIUDAD.<br>MIL VUELTAS.</h2><p>Recorré una interpretación arcade de Córdoba: La Cañada y sus puentes, las torres de la Catedral, Plaza San Martín, el Buen Pastor y las esquinas de Güemes.</p><p>Las calles y las distancias están adaptadas para jugar; no representan un mapa de navegación real. Toda la ciudad y la moto están hechas con geometría 3D original.</p><div class="control-row">Delivery <span>Recogé morfi y entregalo</span></div><p>Referencias de lugares: <a href="https://cordobaturismo.gov.ar/experiencias/centro-historico/" target="_blank" rel="noopener">Córdoba Turismo ↗</a></p><button class="start-button" id="close-info">SALIMOS A LA CALLE <span>↗</span></button>');
+  modal('<div class="eyebrow">CÓRDOBA CAPITAL / 03</div><h2 id="modal-title">UNA CIUDAD.<br>MIL VUELTAS.</h2><p>Recorré una interpretación arcade de Córdoba: La Cañada y sus puentes, las torres de la Catedral, Plaza San Martín, Patio Olmos, Plaza España, el Buen Pastor y las esquinas de Güemes.</p><p>Las calles y las distancias están adaptadas para jugar; no representan un mapa de navegación real. Toda la ciudad y la moto están hechas con geometría 3D original.</p><div class="control-row">Delivery <span>Recogé morfi y entregalo</span></div><p>Referencias de lugares: <a href="https://cordobaturismo.gov.ar/experiencias/centro-historico/" target="_blank" rel="noopener">Córdoba Turismo ↗</a></p><button class="start-button" id="close-info">SALIMOS A LA CALLE <span>↗</span></button>');
   $('close-info').onclick=closeInfo;
 }
 $('help-open').onclick=showHelp;$('help-inline').onclick=showHelp;$('city-open').onclick=showCity;
@@ -512,7 +512,7 @@ camera.position.set(...startZone().preview);camera.lookAt(...startZone().look);
 renderer.render(scene,camera);requestAnimationFrame(animate);
 if(isPilot){
   $('loading').innerHTML='<span class="loader"></span> Cargando';
-  import('./premium.js?v=0.27').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
+  import('./premium.js?v=0.28').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
     console.error('No se pudo cargar la zona piloto',error);
     $('loading').innerHTML='<div style="max-width:330px;line-height:1.8;text-align:center">No se pudieron cargar los modelos de la zona piloto. <br><button id="retry-assets" class="start-button">REINTENTAR ↗</button></div>';
     $('retry-assets').onclick=()=>window.location.reload();

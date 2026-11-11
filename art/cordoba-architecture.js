@@ -1,11 +1,12 @@
 import * as THREE from '../vendor/three.module.js';
 import {RoundedBoxGeometry} from '../vendor/addons/RoundedBoxGeometry.js';
 import {mergeGeometries} from '../vendor/addons/utils/BufferGeometryUtils.js';
-import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.27';
+import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.28';
 
 /** Original, editable architectural set for the La Cañada / Bv. San Juan pilot.
  * Real landmarks are interpreted at arcade scale. Units are metres. */
 export function createCordobaArchitecture(world,maps={}){
+  const districtLimit=world.limit||325, districtSpan=districtLimit*2+10;
   const root=new THREE.Group();root.name='Cordoba_La_Canada_Bv_San_Juan';
   let seed=7182;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
   const unit=new THREE.BoxGeometry(1,1,1),cache=new Map(),geometryCache=new Map(),foliage=[],streetLamps=[],canalWallSegments=[];
@@ -33,6 +34,9 @@ export function createCordobaArchitecture(world,maps={}){
     const floors=Math.ceil(height/3.6),key=color+':'+floors+':'+variant;if(facadeLods.has(key))return facadeLods.get(key);
     const canvas=document.createElement('canvas');canvas.width=512;canvas.height=1024;const p=canvas.getContext('2d');
     p.fillStyle=color;p.fillRect(0,0,512,1024);
+    // Local CC0 photographic masonry adds material detail without extra meshes.
+    const surface=(variant%2?maps.facadeBrick:maps.facadeTile)?.image;
+    if(surface){p.save();p.globalAlpha=variant%2?.18:.12;for(let yy=0;yy<1024;yy+=256)p.drawImage(surface,0,yy,512,256);p.restore();}
     const sunlight=p.createLinearGradient(0,0,512,0);sunlight.addColorStop(0,'rgba(255,244,213,.19)');sunlight.addColorStop(.55,'rgba(255,248,231,.04)');sunlight.addColorStop(1,'rgba(46,38,29,.18)');p.fillStyle=sunlight;p.fillRect(0,0,512,1024);
     // Plaster grain, seams, window recesses and balcony bands give the broad
     // city blocks texture without adding individual meshes to every building.
@@ -55,6 +59,13 @@ export function createCordobaArchitecture(world,maps={}){
       if((row+col+variant)%3===0&&row<floors-1){
         p.fillStyle='#b6a893';p.fillRect(x-8,y+h+4,w+16,4);p.fillStyle='#535a57';p.fillRect(x-5,y+h-7,w+10,2);
         for(let k=0;k<5;k++)p.fillRect(x+k*w/4,y+h-7,1,11);
+      }
+      if(row===floors-1){
+        // Shopfronts and striped awnings animate the ground floor silhouette.
+        p.fillStyle='#243d42';p.fillRect(x-5,y,w+10,h);p.fillStyle='rgba(162,207,214,.35)';p.fillRect(x,y+3,w*.45,h*.8);
+        p.fillStyle=variant%2?'#a94430':'#317569';p.fillRect(x-9,y-9,w+18,8);
+        p.fillStyle='rgba(255,240,201,.8)';for(let stripe=0;stripe<5;stripe++)p.fillRect(x-7+stripe*12,y-9,5,7);
+        p.fillStyle='#eadbbb';p.fillRect(x-3,y+h-3,w+6,3);
       }
       if((row*7+col*3+variant)%5!==0){q.fillStyle=(row+col+variant)%3===0?'#c9b083':'#fff0c4';q.fillRect(x+2,y+2,w-4,Math.max(1,h-4));}
     }
@@ -130,9 +141,9 @@ export function createCordobaArchitecture(world,maps={}){
       const m=roadBase.clone();if(m.map)m.map=tileMap(m.map,horizontal?21.7:.5,horizontal?.5:21.7);
       if(m.normalMap)m.normalMap=tileMap(m.normalMap,horizontal?21.7:.5,horizontal?.5:21.7);
       if(m.roughnessMap)m.roughnessMap=tileMap(m.roughnessMap,horizontal?21.7:.5,horizontal?.5:21.7);
-      box(horizontal?660:15,.1,horizontal?15:660,m,horizontal?0:n,-.06,horizontal?n:0);
+      box(horizontal?districtSpan:15,.1,horizontal?15:districtSpan,m,horizontal?0:n,-.06,horizontal?n:0);
     }
-    for(let p=-320;p<325;p+=12){if(world.roads.some(r=>Math.abs(r-p)<14))continue;
+    for(let p=-districtLimit+5;p<districtLimit;p+=12){if(world.roads.some(r=>Math.abs(r-p)<14))continue;
       box(.12,.015,4,cream,n,.012,p);box(4,.015,.12,cream,p,.018,n);
     }
   }
@@ -160,7 +171,7 @@ export function createCordobaArchitecture(world,maps={}){
     }
   }
   // Parcel outlines, curbs and close-set building frontage establish a real street scale.
-  for(let x=-250;x<=250;x+=100)for(let z=-250;z<=250;z+=100){
+  for(let x=-districtLimit+75;x<=districtLimit-75;x+=100)for(let z=-districtLimit+75;z<=districtLimit-75;z+=100){
     if(x===-150)continue;
     box(84,.25,84,concrete,x,.06,z);
     for(const s of [-1,1]){box(84,.24,.35,stoneCap,x,.12,z+s*42);box(.35,.24,84,stoneCap,x+s*42,.12,z);}
@@ -182,7 +193,7 @@ export function createCordobaArchitecture(world,maps={}){
   // A small moving pool of real lights in premium.js illuminates the closest lamps.
   const lampMetal=mat('Farola_Poste','#37454a',{metalness:.5,roughness:.55});
   const lampBulb=mat('Farola_Luz','#f4dfad',{emissive:'#000000',emissiveIntensity:0});
-  for(const road of world.roads)for(let z=-250;z<=250;z+=100)for(const side of [-1,1]){
+  for(const road of world.roads)for(let z=-districtLimit+75;z<=districtLimit-75;z+=100)for(const side of [-1,1]){
     const x=road+side*10.5;
     column(.12,6.4,lampMetal,x,3.2,z);
     box(2.25,.14,.14,lampMetal,x-side*1.05,6.35,z);
@@ -193,13 +204,13 @@ export function createCordobaArchitecture(world,maps={}){
   // Calicanto walls with visible depth, capped edges, water and short street bridges.
   const cx=world.canalX;
   const water=mat('Agua_La_Canada','#587c70',{roughness:.22,metalness:.35,envMapIntensity:1.1});
-  const waterMesh=box(12,.06,660,water,cx,-2.3,0);waterMesh.name='Arroyo_La_Canada';
+  const waterMesh=box(12,.06,districtSpan,water,cx,-2.3,0);waterMesh.name='Arroyo_La_Canada';
   for(const s of [-1,1]){
     const m=limestone.clone();if(m.map)m.map=tileMap(m.map,130,1);if(m.bumpMap)m.bumpMap=m.map;
     // Leave visible openings aligned with the actual crossing at every road.
-    let edge=-330;
+    let edge=-districtLimit-5;
     for(const road of [...world.roads].sort((a,b)=>a-b)){
-      const end=Math.min(330,road-7.7);
+      const end=Math.min(districtLimit+5,road-7.7);
       if(end>edge){
         const length=end-edge,mid=(edge+end)/2;
         box(1.6,3.6,length,m,cx+s*7.1,-.9,mid);
@@ -209,9 +220,9 @@ export function createCordobaArchitecture(world,maps={}){
       }
       edge=Math.max(edge,road+7.7);
     }
-    if(edge<330){const length=330-edge,mid=(edge+330)/2;
+    if(edge<districtLimit+5){const length=districtLimit+5-edge,mid=(edge+districtLimit+5)/2;
       box(1.6,3.6,length,m,cx+s*7.1,-.9,mid);box(2,.30,length,stoneCap,cx+s*7.1,1.03,mid);
-      box(s<0?13:3,.28,length,concrete,cx+s*(s<0?15:9.5),.05,mid);canalWallSegments.push({side:s,from:edge,to:330});
+      box(s<0?13:3,.28,length,concrete,cx+s*(s<0?15:9.5),.05,mid);canalWallSegments.push({side:s,from:edge,to:districtLimit+5});
     }
   }
   for(const z of world.roads){
@@ -234,7 +245,7 @@ export function createCordobaArchitecture(world,maps={}){
     g.name='Edificio_'+b.x+'_'+b.z;
     const paints=['#d6b081','#d6c6a5','#bd775a','#71a798','#bfad8e','#b8b7a2'];
     const color=paints[Math.abs(Math.round(b.x+b.z))%paints.length],detailed=Math.hypot(b.x+100,b.z-130)<115;
-    const painted=detailed?mat('Revoque_'+color,color,{map:maps.stucco,bumpMap:maps.stucco,bumpScale:.018}):distantFacade(color,h,(Math.abs(Math.round(b.x*3+b.z))%2));
+    const painted=detailed?mat('Revoque_'+color,color,{map:maps.stucco,bumpMap:maps.stucco,bumpScale:.018}):distantFacade(color,h,(Math.abs(Math.round(b.x*3+b.z))%4));
     box(w,h,d,painted,0,h/2,0,g);
     box(w+.45,.3,d+.45,trim,0,3.65,0,g);box(w+.6,.30,d+.6,cream,0,h+.15,0,g);
       const faces=[[Math.PI,w,0,-d/2-.05],[0,w,0,d/2+.05],[-Math.PI/2,d,-w/2-.05,0],[Math.PI/2,d,w/2+.05,0]];
@@ -281,6 +292,31 @@ export function createCordobaArchitecture(world,maps={}){
     const collider=world.colliders.find(c=>c.x===b.x&&c.z===b.z);if(collider){collider.w=w/2+.4;collider.d=d/2+.4;}
   }
   world.buildings.forEach(apartment);
+  // Roofed commercial gallery: both ends open directly to the street. Stores,
+  // lights and flooring remain static; the market furniture can be smashed.
+  for(const gallery of world.galleries||[]){
+    const g=faceGroup(gallery.x,0,gallery.z,0);g.name='Galeria_Transitable';
+    const length=gallery.length;
+    box(length,.1,20,concrete,0,.08,0,g);
+    box(length,.5,22,cream,0,7.3,0,g);
+    for(const side of [-1,1]){
+      box(length,7,1.2,ivory,0,3.5,side*10,g);
+      for(let x=-30;x<=30;x+=12){
+        box(10,3.5,.1,glass,x,2.2,side*9.36,g);
+        box(.15,3.6,.2,iron,x,2.2,side*9.25,g);
+        box(10,.18,.25,wood,x,4.1,side*9.22,g);
+        const face=faceGroup(x,0,side*9.2,side<0?0:Math.PI,g);
+        shopSign(['CAFÉ DE BARRIO','PANADERÍA','ALMACÉN','KIOSCO'][(Math.round((x+30)/12)+(side>0?1:0))%4],9,0,5.25,0,face);
+      }
+    }
+    for(let x=-31;x<=31;x+=12)box(2,.08,1.2,mat('Galeria_Luz','#fff1c9',{emissive:'#ffe3a0',emissiveIntensity:.7}),x,7,0,g);
+    for(const side of [-1,1]){
+      box(.5,7,1.2,trim,side*length/2,3.5,-10,g);box(.5,7,1.2,trim,side*length/2,3.5,10,g);
+      const face=faceGroup(side*(length/2+.3),0,0,side*Math.PI/2,g);
+      sign(gallery.name,0,6.1,0,17,'#215b55','#fff0b9',0,face);
+    }
+  }
+
   function foodShop(shop,index){
     const [px,pz]=shop.pickup,front=px+7.7,g=faceGroup(front+12,0,pz,-Math.PI/2);g.name='Local_'+shop.name;
     const paint=mat('Local_Color_'+index,['#c8a26f','#497e72','#ad6a4f','#dbbc84'][index]);
@@ -307,6 +343,21 @@ export function createCordobaArchitecture(world,maps={}){
     sign('PIZZA · LOMITOS · CAFÉ',-13.62,4,0,21,'#46665b','#f4dfb0',-Math.PI/2,g);
   }
   world.restaurants.forEach(foodShop);
+  // Plaza España and the fountain by Patio Olmos are adapted to the grid;
+  // paths remain open to traffic, with a narrow solid fountain median.
+  const plaza=faceGroup(50,0,350,0);plaza.name='Plaza_Espana';
+  column(29,.22,concrete,0,.08,0,plaza);column(23,.14,green,0,.2,0,plaza);
+  for(let a=0;a<Math.PI*2;a+=Math.PI/6){const x=Math.cos(a)*25,z=Math.sin(a)*25;box(3,.2,.8,trim,x,.35,z,plaza);}
+  column(2.8,2.2,cream,0,1.25,0,plaza);column(1.5,3,trim,0,3.5,0,plaza);
+  sign('PLAZA ESPAÑA',0,2,-29,22,'#2d6055','#fff0bc',Math.PI,plaza);
+  const fountain=faceGroup(0,0,45,0);fountain.name='Fuente_Patio_Olmos';
+  const waterMat=mat('Fuente_Agua','#74b7cd',{roughness:.22,metalness:.18});
+  box(4,.48,14,trim,0,.25,0,fountain);box(3.5,.1,13.4,waterMat,0,.52,0,fountain);
+  for(const z of [-5,-2.5,0,2.5,5]){column(.13,2.3,waterMat,0,1.7,z,fountain);column(.35,.13,cream,0,.62,z,fountain);}
+  sign('AV. VÉLEZ SARSFIELD',-7,3,46,12,'#285447','#f4edcb',Math.PI/2);
+  sign('BV. SAN JUAN',-12,3,-8,12,'#285447','#f4edcb',0);
+  sign('AV. GENERAL PAZ',-8,3,-120,14,'#285447','#f4edcb',Math.PI/2);
+  sign('AV. HIPÓLITO YRIGOYEN',-8,3,275,18,'#285447','#f4edcb',Math.PI/2);
   // Patio Olmos is modelled as a landmark, including the chamfered entrance,
   // paired columns, arched windows, red/blue banners and balustrade.
   const olmos=faceGroup(-50,0,50,0);olmos.name='Patio_Olmos';
