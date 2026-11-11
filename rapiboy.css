@@ -83,3 +83,5 @@ body:not(.playing) #intro .start-button:hover{background:#ffea72}
 body:not(.playing) #intro .start-button:active{transform:translateY(3px);box-shadow:0 2px 0 #bd8717}
 body:not(.playing) #intro .start-button span{font-size:28px}
 @media(max-height:450px){body:not(.playing) #intro{padding:13px 20px}body:not(.playing) #intro h1{font-size:40px!important;margin:9px 0 13px!important}body:not(.playing) #intro .start-button{height:43px;font-size:20px}}
+
+.map-attribution{display:none}body.real-map .map-attribution{display:block;position:absolute;bottom:2px;right:5px;z-index:20;padding:2px 4px;background:#11232bbf;color:#fff;font:9px sans-serif;text-decoration:underline}

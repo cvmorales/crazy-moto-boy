@@ -63,3 +63,8 @@ Peatones Punk y dos variantes Man: Quaternius, Poly Pizza, CC0.
 https://poly.pizza/m/BTALZymknF
 https://poly.pizza/m/fjHyMd5Wxw
 https://poly.pizza/m/HMnuH5geEG
+
+Mapa beta a escala: datos © colaboradores de OpenStreetMap, ODbL 1.0.
+https://www.openstreetmap.org/copyright
+Los datos geográficos adaptados están disponibles en real-map-data.js.
+Edificios faltantes, alturas no registradas y locales son interpretaciones del juego.

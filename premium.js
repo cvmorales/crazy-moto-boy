@@ -2,11 +2,11 @@ import * as THREE from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/addons/loaders/GLTFLoader.js';
 import {HDRLoader} from './vendor/addons/loaders/HDRLoader.js';
 import {clone as cloneRig} from './vendor/addons/utils/SkeletonUtils.js';
-import {poseCourierDriver} from './art/courier-pose.js?v=0.31';
+import {poseCourierDriver} from './art/courier-pose.js?v=0.32';
 import {Sky} from './vendor/addons/Sky.js';
-import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.31';
-import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.31';
-import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.31';
+import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.32';
+import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.32';
+import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.32';
 
 export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState}) {
   const gltf=new GLTFLoader(),textures=new THREE.TextureLoader();
@@ -34,14 +34,14 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
   const [calicanto,stucco,paving]=await Promise.all(['calicanto','stucco','paving'].map(name=>textures.loadAsync('./assets/textures/'+name+'-color.jpg')));
   const [facadeBrick,facadeTile]=await Promise.all(['brick','tile'].map(name=>textures.loadAsync('./assets/textures/facade-'+name+'.jpg')));
   for(const t of [calicanto,stucco,paving]){t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;}
-  const architecture=createCordobaArchitecture(cityWorld,{calicanto,stucco,paving,facadeBrick,facadeTile,road:roadColor,roadNormal,roadRough});
-  const landscape=createCanopyStreet(cityWorld,{});
+  const architecture=cityWorld.real?cityWorld.realArt:createCordobaArchitecture(cityWorld,{calicanto,stucco,paving,facadeBrick,facadeTile,road:roadColor,roadNormal,roadRough});
+  const landscape=cityWorld.real?{root:new THREE.Group(),leafMeshes:[]}:createCanopyStreet(cityWorld,{});
   cityWorld.city.visible=false;
-  for(const p of cityWorld.people){scene.add(p.mesh);if(Math.abs(p.mesh.position.x+84)<.1)p.mesh.position.x=-89.5;else{const n=cityWorld.roads.reduce((a,b)=>Math.abs(b-p.mesh.position.x)<Math.abs(a-p.mesh.position.x)?b:a);if(Math.abs(p.mesh.position.x-n)>13&&Math.abs(p.mesh.position.x-n)<17)p.mesh.position.x=n+Math.sign(p.mesh.position.x-n)*10.5;}}
+  for(const p of cityWorld.people){scene.add(p.mesh);if(cityWorld.real)continue;if(Math.abs(p.mesh.position.x+84)<.1)p.mesh.position.x=-89.5;else{const n=cityWorld.roads.reduce((a,b)=>Math.abs(b-p.mesh.position.x)<Math.abs(a-p.mesh.position.x)?b:a);if(Math.abs(p.mesh.position.x-n)>13&&Math.abs(p.mesh.position.x-n)<17)p.mesh.position.x=n+Math.sign(p.mesh.position.x-n)*10.5;}}
   for(const p of cityWorld.breakables){if(p.carried||p.instanced)continue;scene.add(p.mesh);if(!p.parts&&p.x< -108&&p.x> -113){p.x=-106.5;p.mesh.position.x=p.x;}}
   // Detach the superseded district so Three.js stops updating its hidden hierarchy.
   cityWorld.city.removeFromParent();
-  for(let i=cityWorld.colliders.length-1;i>=0;i--){const c=cityWorld.colliders[i];if(!c.originalArt&&((c.x===50&&c.z===-150)||(c.x===150&&(c.z===48||c.z===150))))cityWorld.colliders.splice(i,1);}
+  if(!cityWorld.real)for(let i=cityWorld.colliders.length-1;i>=0;i--){const c=cityWorld.colliders[i];if(!c.originalArt&&((c.x===50&&c.z===-150)||(c.x===150&&(c.z===48||c.z===150))))cityWorld.colliders.splice(i,1);}
   batchStaticArchitecture(landscape.root);landscape.leafMeshes.forEach(m=>m.castShadow=false);
   batchStaticArchitecture(architecture.root);scene.add(architecture.root,landscape.root);
   for(const object of [...scene.children]){if(object.isMesh&&object.geometry.parameters?.width===230&&object.geometry.parameters?.height===110)object.visible=false;}

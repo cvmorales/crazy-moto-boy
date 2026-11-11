@@ -88,6 +88,15 @@ export function createStreetProps({THREE,scene,world}){
     for(const dz of [-22,-15,-8,8,15,22]){make('mesa',x+4.5,z+dz);make('silla',x+3,z+dz,Math.PI/2);make('silla',x+6,z+dz,-Math.PI/2);if(Math.abs(dz)===15)make('parasol',x+4.5,z+dz);}
     make('cartel',x+2,z-4);make('maceta',x+5,z+27);make('papelera',x+3,z-27);
   }
+  if(world.real){
+    // Place small breakables along the actual road segments instead of the old grid.
+    const types=['cartel','maceta','papelera','conoobra','cajonobra','silla','mesa'];let placed=0;
+    for(const segment of world.network.segments){if(segment.length<25||placed>=180)continue;
+      const dx=segment.b.x-segment.a.x,dz=segment.b.z-segment.a.z,len=segment.length,side=placed%2?1:-1;
+      const x=(segment.a.x+segment.b.x)/2-side*dz/len*4.2,z=(segment.a.z+segment.b.z)/2+side*dx/len*4.2;
+      if(world.realWorld.blocked(x,z))continue;make(types[placed%types.length],x,z,Math.atan2(dx,dz));placed++;
+    }
+  }else{
   world.restaurants.forEach(s=>cafe(...s.pickup));
   // Breakable commercial displays, outdoor-style tables and seating inside
   // the gallery. The through route has no invisible building collider.
@@ -150,6 +159,7 @@ export function createStreetProps({THREE,scene,world}){
   // Immediately visible, reachable props beside all three starting locations.
   cafe(-97,175);
   for(const [x,z] of [[50,-108],[150,113]]){make('cartel',x-5,z);make('reja',x+5,z);make('maceta',x+8,z+1);}
+  }
   for(const [i,person] of world.people.filter(p=>p.walk).filter((_,i)=>i%9===0).entries()){
     const p=make(i%2?'bandeja':'bolsa',.7,.15,0,person.mesh);p.owner=person;
   }

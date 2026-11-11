@@ -5,17 +5,24 @@ export function navigationPoint(x,z,player,scale=.7){
   const dx=(x-player.x)*scale,dz=(z-player.z)*scale,c=Math.cos(player.angle),s=Math.sin(player.angle);
   return {x:CENTER+dx*c-dz*s,y:CENTER+dx*s+dz*c};
 }
-export function drawNavigationMap({ctx,player,roads,limit,canalX,target,route,pickups=[]}){
+export function drawNavigationMap({ctx,player,roads,limit,canalX,realNetwork=null,target,route,pickups=[]}){
   const scale=.9-Math.min(45,Math.abs(player.speed))*.007;
   const p=(x,z)=>navigationPoint(x,z,player,scale);
   const line=(points)=>{ctx.beginPath();points.forEach(([x,z],i)=>{const v=p(x,z);if(i)ctx.lineTo(v.x,v.y);else ctx.moveTo(v.x,v.y);});};
   function block(x,z,w,d,color){ctx.fillStyle=color;line([[x,z],[x+w,z],[x+w,z+d],[x,z+d]]);ctx.closePath();ctx.fill();}
   ctx.clearRect(0,0,SIZE,SIZE);ctx.save();ctx.beginPath();ctx.arc(CENTER,CENTER,RADIUS,0,Math.PI*2);ctx.clip();
   ctx.fillStyle='#152a30';ctx.fillRect(0,0,SIZE,SIZE);
-  for(let i=0;i<roads.length-1;i++)for(let j=0;j<roads.length-1;j++)block(roads[i]+12,roads[j]+12,76,76,'#294146');
-  block(14,-86,72,72,'#355d4a');block(114,14,72,72,'#355d4a');block(canalX-6,-limit,12,limit*2,'#458ba0');
-  ctx.strokeStyle='#67818a';ctx.lineWidth=15*scale;ctx.lineCap='round';
-  for(const n of roads){line([[n,-limit],[n,limit]]);ctx.stroke();line([[-limit,n],[limit,n]]);ctx.stroke();}
+  if(realNetwork){
+    ctx.lineCap='round';ctx.lineWidth=10*scale;ctx.strokeStyle='#458ba0';
+    for(const s of realNetwork.water){if(Math.min(Math.abs(s.a.x-player.x),Math.abs(s.b.x-player.x))>300||Math.min(Math.abs(s.a.z-player.z),Math.abs(s.b.z-player.z))>300)continue;line([[s.a.x,s.a.z],[s.b.x,s.b.z]]);ctx.stroke();}
+    ctx.strokeStyle='#67818a';ctx.lineWidth=8*scale;
+    for(const s of realNetwork.segments){if(Math.min(Math.abs(s.a.x-player.x),Math.abs(s.b.x-player.x))>300||Math.min(Math.abs(s.a.z-player.z),Math.abs(s.b.z-player.z))>300)continue;line([[s.a.x,s.a.z],[s.b.x,s.b.z]]);ctx.stroke();}
+  }else{
+    for(let i=0;i<roads.length-1;i++)for(let j=0;j<roads.length-1;j++)block(roads[i]+12,roads[j]+12,76,76,'#294146');
+    block(14,-86,72,72,'#355d4a');block(114,14,72,72,'#355d4a');block(canalX-6,-limit,12,limit*2,'#458ba0');
+    ctx.strokeStyle='#67818a';ctx.lineWidth=15*scale;ctx.lineCap='round';
+    for(const n of roads){line([[n,-limit],[n,limit]]);ctx.stroke();line([[-limit,n],[limit,n]]);ctx.stroke();}
+  }
   for(const pos of pickups){const v=p(...pos);ctx.beginPath();ctx.arc(v.x,v.y,4,0,Math.PI*2);ctx.fillStyle='#61e3ba';ctx.fill();}
   line(route);ctx.strokeStyle='#14211f';ctx.lineWidth=11;ctx.lineJoin='round';ctx.stroke();
   line(route);ctx.strokeStyle='#e7f26c';ctx.lineWidth=6;ctx.stroke();
