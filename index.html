@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2c2b67"><meta name="description" content="La calle es tuya. Un arcade de motos, repartos en una Córdoba a toda velocidad.">
+  <title>Crazy-Moto-Boy · Córdoba — Zona piloto</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./style.css?v=0.25"><link rel="stylesheet" href="./rapiboy.css?v=0.25">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script></head>
+<body data-pilot="true">
+  <header class="topbar">
+    <a class="brand" href="./pilot.html?v=0.25" aria-label="Crazy-Moto-Boy, inicio"><span class="brand-symbol">↗</span><span>CRAZY-<span class="brand-light">MOTO-BOY</span><small>CÓRDOBA, ARGENTINA</small></span></a>
+    <nav aria-label="Principal"><button class="nav-active" id="nav-play">El juego <span>01</span></button><button id="help-open">Cómo jugar <span>02</span></button><button id="city-open">La ciudad <span>03</span></button></nav>
+    <div class="header-tools"><span class="prototype"><i></i> ARCADE · VOL. 01</span><button class="icon-button" id="sound" aria-label="Activar sonido" title="Sonido">♫<span class="off-mark">×</span></button><button class="icon-button" id="fullscreen" aria-label="Pantalla completa" title="Pantalla completa">⛶</button></div>
+  </header>
+  <main id="game-shell">
+    <div id="world" aria-label="Ciudad 3D de Córdoba"></div>
+    <div class="scene-grain"></div><div class="vignette"></div>
+    <div class="location"><span class="location-dot"></span><span id="district">LA CAÑADA · GÜEMES</span><span class="location-separator">/</span><span>CÓRDOBA CAPITAL</span></div>
+    <section class="intro" id="intro">
+      <div class="menu-brand"><span>UN RATO DE ARCADE</span><button id="exit-game" aria-label="Salir del juego">✕</button></div>
+      <div class="eyebrow"><span class="small-line"></span> CÓRDOBA · ARCADE</div>
+      <h1>CRAZY-<br><span>MOTO-BOY</span></h1>
+      <p class="intro-copy">Tu pausa, con otra velocidad.<br>Repartí, explorá Córdoba y ganale al reloj.</p>
+      <button class="start-button" id="start">JUGAR <span>↗</span></button>
+      <div class="start-hint"><span class="menu-keyboard">WASD o flechas · </span><button id="help-inline">Cómo jugar ↗</button><span class="menu-round">Turnos de 3 minutos</span></div>
+      <div class="best-line"><span>★</span> TU MEJOR TURNO <strong id="best">0 pts</strong></div>
+    </section>
+    <div class="city-caption" id="city-caption"><span>31°25′ S &nbsp; 64°11′ O</span><strong>NO ES TRÁFICO.<br>ES UN DESAFÍO.</strong><small>CÓRDOBA CAPITAL <span>↗</span></small></div>
+    <div class="scene-label" id="scene-label"><i></i> CIUDAD ABIERTA <span>·</span> 3D EN TIEMPO REAL</div>
+    <section class="hud hidden" id="hud" aria-label="Estado de la partida">
+      <div class="job-card"><div class="job-eyebrow"><span id="day-period" class="day-period"></span><span id="job-type">DELIVERY</span><span id="job-step">01 / RECOGER</span></div><h2 id="job-title">Buscá el pedido</h2><p id="job-place">Pizzería de Güemes</p><p id="job-address">RETIRÁ EN EL LOCAL DE COMIDA</p><button id="other-job" type="button">E · OTRO LOCAL ↗</button><div class="job-meta"><span id="job-distance">80 m</span><span id="job-reward">+4.800 pts</span></div></div>
+      <div class="timer"><small>GAME TIME</small><strong id="time">03:00</strong><div class="timer-track"><i id="time-bar"></i></div></div>
+      <div class="earnings"><small>PUNTOS</small><strong id="money">0 pts</strong><span id="deliveries">0 entregas</span></div>
+      <div class="direction"><span id="direction-arrow">↑</span><small id="direction-distance">SEGUÍ LA MARCA</small></div>
+      <div class="map-panel"><canvas id="minimap" width="280" height="280" aria-label="Mapa circular: moto en el centro, ruta y dirección al destino"></canvas></div>
+      <div class="speed-panel"><div><strong id="speed">0</strong><span>KM/H</span></div><div class="boost-track"><i id="boost-bar"></i></div><small><span class="keycap">SHIFT</span> TURBO <span id="boost-label">LISTO</span></small></div>
+      <div class="play-controls"><span><b>WASD</b> conducir</span><span><b>ESPACIO</b> frenar</span><span><b>R</b> volver a la calle</span><button id="pause-button"><b>ESC</b> pausa</button></div>
+    </section>
+    <div class="toast hidden" id="toast" role="status"></div>
+    <div class="combo hidden" id="combo" role="status">CRAZY SMASH! ×1</div><div class="speed-lines" aria-hidden="true"></div>
+    <div class="pickup-prompt hidden" id="pickup-prompt">Frená dentro del círculo para recoger</div>
+    <button id="mobile-pause" aria-label="Pausar partida">Ⅱ</button>
+    <div class="touch-controls hidden" id="touch-controls" aria-label="Controles táctiles"><div class="pedals"><div class="pedal-extras"><button data-drive="brake" aria-label="Frenar">FRENO</button><button data-drive="turbo" aria-label="Acelerar con turbo">⚡ TURBO</button></div><button class="gas" data-drive="gas" aria-label="Acelerar">GAS ↑</button></div><div class="steering"><button data-drive="left" aria-label="Girar a la izquierda">◀</button><button data-drive="right" aria-label="Girar a la derecha">▶</button></div></div>
+    <div class="overlay hidden" id="overlay"><section class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"></section></div>
+    <div class="loading" id="loading"><span class="loader"></span> PONIENDO LA MOTO A PUNTO…</div>
+  </main>
+  <footer><span>HECHO PARA DOBLAR EN LA ESQUINA.</span><span class="footer-center">SIN VUELTAS. CON MUCHA MOTO. <b>↗</b></span><span><a href="./assets/CREDITS.txt" target="_blank">CRÉDITOS</a> <i>v0.25 · PILOTO</i></span></footer>
+  <script type="module" src="./game.js?v=0.25"></script>
+</body></html>

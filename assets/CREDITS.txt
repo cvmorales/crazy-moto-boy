@@ -1,0 +1,54 @@
+Crazy-Moto-Boy — DISTRITO GÜEMES
+Recursos incorporados en la zona piloto v0.4
+
+Personajes Hoodie Character, Casual Character y Animated Woman,
+modelos de autos Car, SUV y Sports Car: Quaternius.
+Licencia CC0 1.0 Universal.
+https://quaternius.com/packs/ultimatemodularcharacters.html
+https://poly.pizza/m/gKLBoRsyKe
+https://poly.pizza/m/kZ3DmIoGip
+https://poly.pizza/m/nIItLV9nxS
+https://poly.pizza/m/unqqkULtRU
+https://poly.pizza/m/xsMtZhBkxL
+https://poly.pizza/m/1mkmFkAz5v
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Motorcycle y Bus: Poly by Google.
+Licencia Creative Commons Attribution 3.0 Unported (CC BY 3.0).
+Adaptaciones: escala, orientación y materiales para el juego.
+https://poly.pizza/m/dse64pqMKAR
+https://poly.pizza/m/4CPpvEmrMoF
+https://creativecommons.org/licenses/by/3.0/
+
+Asfalto Aerial Asphalt 01: Rob Tuytel, Poly Haven. Licencia CC0.
+https://polyhaven.com/a/aerial_asphalt_01
+Royal Esplanade HDRI: HDRI Haven / Poly Haven. Licencia CC0.
+https://polyhaven.com/a/royal_esplanade
+HDRI distribuido también con los ejemplos oficiales de Three.js.
+
+Motor y complementos Three.js 0.180.0: Three.js Authors. Licencia MIT.
+Ver ../vendor/THREE-LICENSE.txt.
+
+Arquitectura adaptada de Córdoba, texturas procedurales, lógica,
+interfaz y efectos del juego: creados para este proyecto.
+Los videos de Crazy Taxi: World Tour se usan como referencia visual.
+El proyecto no incorpora recursos extraídos de los juegos de SEGA.
+
+Calicanto: rock_wall_02, Poly Haven, CC0.
+https://polyhaven.com/a/rock_wall_02
+Revoque: white_plaster_02, Poly Haven, CC0.
+https://polyhaven.com/a/white_plaster_02
+Veredas: red_sandstone_pavement, Poly Haven, CC0.
+https://polyhaven.com/a/red_sandstone_pavement
+Moto Córdoba 150, fachadas, interpretación de Patio Olmos y tipas:
+modelos originales creados para este proyecto en dist/art/.
+
+Referencias fotográficas para las interpretaciones de patrimonio (sin incorporar
+las fotografías al juego):
+Capuchinos: https://argentina.italiani.it/iglesia-del-sagrado-corazon-de-jesus-los-capuchinos/
+Catedral: https://www.cadena3.com/noticia/cordoba/es-uno-de-los-edificios-mas-antiguos-del-pais-y-esta-en-cordoba-como-visitarlo_361236
+Tipas de La Cañada: https://www.lavoz.com.ar/ciudadanos/municipalidad-declaro-patrimonio-natural-urbano-a-tipas-de-canada/
+El distrito comprime distancias y adapta las calles al formato arcade.
+
+Menú Rapiboy: logo del sitio oficial https://rapiboy.com/Content/publica3/assets/brand/rapiboy.svg. Paleta violeta #2C2B67 y amarillo #FBDB6E observada en https://rapiboy.com/.
+Fuentes Barlow Condensed y DM Sans incluidas localmente, SIL Open Font License. Ver fonts/BARLOW-OFL.txt y fonts/DM-SANS-OFL.txt. Fuente: Google Fonts.

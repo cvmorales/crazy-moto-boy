@@ -1,0 +1,23 @@
+<!doctype html><html lang="es-AR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crazy Moto · Modelo 3D de la moto</title><style>
+*{box-sizing:border-box}body{margin:0;background:#d7d5cf;font:13px system-ui,sans-serif;color:#24302b;overflow:hidden}canvas{display:block;touch-action:none}.top{position:absolute;top:26px;left:30px;pointer-events:none}.top small{font-size:10px;letter-spacing:2px}.top h1{font-size:29px;letter-spacing:-1px;margin:7px 0}.top p{color:#647067;font-size:12px;margin:0}.bottom{position:absolute;bottom:23px;left:30px;right:30px;display:flex;justify-content:space-between;align-items:center;gap:15px;font-size:11px}a,button{background:#25332c;color:#f4efd8;padding:11px 16px;border-radius:4px;text-decoration:none;border:0;font:inherit;cursor:pointer}.loading{position:absolute;inset:0;display:grid;place-items:center;background:#d7d5cf;font-size:12px;letter-spacing:2px}@media(max-width:600px){.top{left:20px;top:20px}.top h1{font-size:24px}.top p{max-width:260px}.bottom{left:20px;right:20px;font-size:9px}.bottom span{max-width:170px}}
+</style><script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script></head><body>
+<div class="top"><small>CRAZY MOTO / ARTE 3D EN PRODUCCIÓN</small><h1>Moto de reparto · 150 cc</h1><p>Modelo original con piezas separadas para animación.</p></div><div class="bottom"><span>Arrastrá para girar · Rueda para acercar</span><a href="./pilot.html">Volver al juego ↗</a></div><div class="loading" id="loading">CARGANDO MODELO 3D…</div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import {HDRLoader} from './vendor/addons/loaders/HDRLoader.js';
+import {createCourierMotorcycle} from './art/courier-motorcycle.js';
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#d7d5cf');const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,100);
+scene.add(new THREE.HemisphereLight('#f9f3df','#9fa898',1.5));const sun=new THREE.DirectionalLight('#fff0d5',3.3);sun.position.set(-3,6,-4);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-4;sun.shadow.camera.right=4;sun.shadow.camera.top=4;sun.shadow.camera.bottom=-4;sun.shadow.normalBias=.012;sun.shadow.bias=-.0001;scene.add(sun);
+const fill=new THREE.DirectionalLight('#c7e4ff',1.2);fill.position.set(4,3,3);scene.add(fill);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshStandardMaterial({color:'#bdbcb3',roughness:.8}));floor.rotation.x=-Math.PI/2;floor.position.y=-.004;floor.receiveShadow=true;scene.add(floor);
+const model=createCourierMotorcycle();scene.add(model.root);
+const pmrem=new THREE.PMREMGenerator(renderer);try{const hdr=await new HDRLoader().loadAsync('./assets/textures/daylight.hdr');scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.environmentIntensity=.65;hdr.dispose();}catch{}pmrem.dispose();
+let angle=.9,pitch=.28,distance=5.5,drag=false,previousX=0,previousY=0,manualUntil=0;
+renderer.domElement.addEventListener('pointerdown',e=>{drag=true;previousX=e.clientX;previousY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;angle-=(e.clientX-previousX)*.009;pitch=THREE.MathUtils.clamp(pitch+(e.clientY-previousY)*.006,-.05,1.15);previousX=e.clientX;previousY=e.clientY;manualUntil=performance.now()+15000;});
+for(const event of ['pointerup','pointercancel'])renderer.domElement.addEventListener(event,()=>drag=false);
+renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();distance=THREE.MathUtils.clamp(distance+e.deltaY*.004,2.4,10);manualUntil=performance.now()+15000;},{passive:false});
+function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}addEventListener('resize',resize);resize();
+document.getElementById('loading').remove();let last=performance.now();function frame(t){const dt=Math.min((t-last)/1000,.05);last=t;if(!drag&&t>manualUntil)angle+=dt*.10;camera.position.set(Math.sin(angle)*distance,1+Math.sin(pitch)*distance,-Math.cos(angle)*distance);camera.lookAt(0,.9,0);renderer.render(scene,camera);requestAnimationFrame(frame);}requestAnimationFrame(frame);
+</script></body></html>

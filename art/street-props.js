@@ -1,0 +1,133 @@
+// Shared, instanced street furniture. Objects keep independent destruction state.
+export function createStreetProps({THREE,scene,world}){
+  const props=[],groups=new Map(),materials=new Map(),geometries={box:new THREE.BoxGeometry(1,1,1),cylinder:new THREE.CylinderGeometry(1,1,1,8),sphere:new THREE.SphereGeometry(1,8,6)};
+  const wood='#b68046',metal='#354f53',cream='#f3dca6',red='#e35b3b',green='#358c71';
+  let dirty=true;
+  function material(color){if(!materials.has(color))materials.set(color,new THREE.MeshStandardMaterial({color,roughness:.8}));return materials.get(color);}
+  function piece(prop,shape,color,x,y,z,w,h,d,rz=0){
+    const m=new THREE.Mesh(geometries[shape],material(color));m.position.set(x,y,z);m.scale.set(w,h,d);m.rotation.z=rz;m.visible=false;prop.mesh.add(m);prop.parts.push(m);
+    const key=shape+color;if(!groups.has(key))groups.set(key,[]);groups.get(key).push({prop,mesh:m});return m;
+  }
+  function make(type,x,z,angle=0,parent=scene){
+    const mesh=new THREE.Group();mesh.position.set(x,0,z);mesh.rotation.y=angle;mesh.userData.arcadeDynamic=true;parent.add(mesh);
+    const p={type,mesh,x,z,r:1,broken:false,colors:[wood,cream,metal],parts:[],carried:parent!==scene,instanced:true,onBreak:()=>{dirty=true;}};props.push(p);world.breakables.push(p);
+    const b=(color,x,y,z,w,h,d,rz=0)=>piece(p,'box',color,x,y,z,w,h,d,rz);
+    const c=(color,x,y,z,r,h)=>piece(p,'cylinder',color,x,y,z,r,h,r);
+    if(type==='mesa'){
+      p.r=1.25;b(wood,0,1.05,0,2.1,.16,1.6);c(metal,0,.5,0,.12,1);b(metal,0,.08,0,1.2,.1,.7);
+      c(cream,-.45,1.25,0,.12,.28);c(red,.4,1.23,.25,.15,.24);b(cream,.2,1.15,-.35,.4,.05,.35);
+    }else if(type==='silla'){
+      p.r=.6;b(green,0,.6,0,.65,.12,.65);b(green,0,.99,.29,.65,.7,.12);for(const x of [-.26,.26])for(const z of [-.26,.26])b(metal,x,.3,z,.08,.6,.08);
+    }else if(type==='parasol'){
+      p.r=.65;c(cream,0,1.7,0,.06,3.4);b(metal,0,.1,0,.75,.14,.75);
+      for(const side of [-1,1])b(side<0?red:cream,side*.75,3.25,0,1.6,.13,2.7,side*.18);
+    }else if(type==='banco'){
+      p.r=1.8;for(let z=-.36;z<.4;z+=.25)b(wood,0,.65,z,3,.13,.2);
+      for(const y of [1,1.3])b(wood,0,y,.44,3,.22,.1);
+      for(const x of [-1.15,1.15]){b(metal,x,.35,0,.18,.7,.75);b(metal,x,.95,.43,.12,.9,.12);b(metal,x,1,-.1,.1,.1,.7);}
+    }else if(type==='reja'){
+      p.r=1.65;for(const x of [-1.5,1.5]){c(metal,x,.9,0,.08,1.8);b(metal,x,.1,0,.5,.13,.7);}
+      for(const y of [.4,1.5])b(green,0,y,0,3,.09,.1);
+      for(let x=-1.2;x<=1.2;x+=.4)b(green,x,.95,0,.06,1.15,.08);
+    }else if(type==='cartel'){
+      p.r=.9;b(green,0,1.1,0,1.2,1.5,.13);for(const side of [-1,1])b(wood,side*.66,.85,0,.09,1.7,.6,side*-.06);
+      for(const y of [.85,1.1,1.4])b(cream,0,y,-.08,.83,.055,.03);
+      b(red,0,1.7,-.09,.85,.15,.03);b(wood,0,.12,0,1.6,.1,.9);
+    }else if(type==='maceta'){
+      p.r=.65;c(red,0,.4,0,.48,.8);c(wood,0,.82,0,.5,.08);
+      for(const [x,y,z] of [[0,1.4,0],[-.3,1.1,.1],[.3,1.2,-.1]])piece(p,'sphere',green,x,y,z,.4,.65,.4);
+    }else if(type==='puesto'){
+      p.r=1.9;b(wood,0,1,0,2.6,.2,1.4);for(const x of [-1.1,1.1]){b(metal,x,.5,0,.13,1,.8);b(metal,x,2,0,.09,2,.09);}
+      b(red,0,2.95,0,3,.12,2);b(cream,0,2.83,-1,3,.23,.08);
+      for(const x of [-.85,0,.85])for(const z of [-.4,.3])piece(p,'sphere',x===0?'#e9bd43':red,x,1.28,z,.25,.25,.25);
+    }else if(type==='flores'){
+      p.r=1.7;b(green,0,.9,0,2.8,.18,1.3);for(const x of [-1.1,1.1]){b(metal,x,.45,0,.12,.9,1);b(metal,x,1.9,.45,.07,2.9,.07);}
+      for(const x of [-.9,0,.9])for(const z of [-.35,.35]){
+        c(cream,x,1.17,z,.24,.45);
+        for(const k of [-1,1]){const xx=x+k*.12;c(green,xx,1.67,z,.025,.75);for(const [dx,dy] of [[-.1,0],[.1,0],[0,.1],[0,-.1]])piece(p,'sphere',x===0?cream:red,xx+dx,2+dy,z,.12,.12,.1);}
+      }
+      b(green,0,3.3,0,3.1,.13,1.9);b(cream,0,3.15,-.95,2.8,.24,.07);
+    }else if(type==='ropa'||type==='perchero'){
+      p.r=1.7;for(const x of [-1.3,1.3]){b(metal,x,1.2,0,.09,2.4,.09);b(metal,x,.1,0,.55,.13,.9);}b(metal,0,2.4,0,2.8,.08,.08);
+      for(let i=0;i<5;i++){const x=-1+i*.5,color=[red,green,cream,red,green][i];
+        b(wood,x,2.18,0,.45,.055,.07);b(color,x,1.65,0,.38,.85,.10);b(color,x-.26,1.97,0,.24,.28,.11,-.45);b(color,x+.26,1.97,0,.24,.28,.11,.45);
+      }
+      if(type==='ropa'){b(wood,0,.65,1,2.8,.14,1);for(const x of [-1,0,1])for(let y=.8;y<1.15;y+=.12)b(x===0?cream:green,x,y,1,.7,.11,.65);}
+    }else if(type==='revistas'){
+      p.r=1.4;b(green,0,.9,0,2.4,1.6,1.1);b(cream,0,1.75,0,2.7,.17,1.4);
+      for(const x of [-.8,0,.8])for(const y of [1.95,2.35]){b(wood,x,y,.35,.7,.45,.1);b(x===0?red:cream,x,y,.29,.6,.38,.04);b(green,x,y-.05,.26,.43,.035,.02);}
+      for(const x of [-1.1,1.1])b(metal,x,2.1,.5,.07,2.3,.07);b(red,0,2.85,0,2.8,.15,1.7);
+    }else if(type==='carrito'){
+      p.r=1.5;b(cream,0,.95,0,2.3,1.2,1.2);b(red,0,1.6,0,2.5,.18,1.4);
+      for(const x of [-.9,.9])for(const z of [-.55,.55]){const wheel=c(metal,x,.32,z,.27,.12);wheel.rotation.x=Math.PI/2;}
+      c(cream,0,2.4,0,.055,1.6);for(const side of [-1,1])b(side<0?green:cream,side*.7,3.2,0,1.5,.12,2.2,side*.16);
+      for(const x of [-.7,0,.7])c(x===0?red:green,x,1.82,0,.13,.3);
+    }else if(type==='papelera'){
+      p.r=.65;c(green,0,.7,0,.52,1.4);c(metal,0,1.42,0,.56,.12);b(metal,0,1.15,-.51,.6,.25,.04);
+    }else if(type==='bolardo'){
+      p.r=.45;c(metal,0,.6,0,.15,1.2);c(cream,0,.95,0,.17,.15);c(metal,0,.08,0,.3,.13);
+    }else if(type==='bolsa'){
+      p.r=.65;p.mesh.position.y=1.1;b('#d5ab68',0,0,0,.55,.65,.38);for(const x of [-.14,.14])b(cream,x,.4,0,.045,.25,.045);b(cream,0,.53,0,.32,.045,.045);
+    }else if(type==='bandeja'){
+      p.r=.7;p.mesh.position.y=1.1;b(wood,0,0,0,.85,.06,.55);for(const x of [-.25,.25]){c(cream,x,.18,0,.12,.28);c(red,x,.33,0,.135,.045);}
+    }
+    p.fragments=p.parts;return p;
+  }
+  function cafe(x,z){
+    for(const dz of [-22,-15,-8,8,15,22]){make('mesa',x+4.5,z+dz);make('silla',x+3,z+dz,Math.PI/2);make('silla',x+6,z+dz,-Math.PI/2);if(Math.abs(dz)===15)make('parasol',x+4.5,z+dz);}
+    make('cartel',x+2,z-4);make('maceta',x+5,z+27);make('papelera',x+3,z-27);
+  }
+  world.restaurants.forEach(s=>cafe(...s.pickup));
+  // Street markets on both sides of the grid, with clear crossings and entrances.
+  const marketTypes=['flores','ropa','revistas','carrito','puesto','perchero'];
+  let market=0;
+  const usable=(x,z,padding=1)=>!world.colliders.some(c=>Math.abs(c.x-x)<c.w+padding&&Math.abs(c.z-z)<c.d+padding)&&!world.restaurants.some(s=>Math.hypot(s.pickup[0]-x,s.pickup[1]-z)<6)&&!world.homes.some(h=>Math.hypot(h.drop[0]-x,h.drop[1]-z)<6);
+  for(const n of world.roads)for(let t=-270;t<=270;t+=30){
+    if(world.roads.some(r=>Math.abs(r-t)<15))continue;
+    for(const side of [-1,1])for(const axis of ['x','z']){
+      const x=axis==='x'?t:n+side*10.5,z=axis==='x'?n+side*10.5:t;
+      if(Math.abs(x-world.canalX)<10||!usable(x,z,1.8))continue;
+      make(marketTypes[market++%marketTypes.length],x,z,axis==='x'?0:Math.PI/2);
+    }
+  }
+  // Furniture sits beside every street and near corners, leaving junctions clear.
+  for(const n of world.roads)for(let z=-260;z<280;z+=45){
+    if(world.roads.some(r=>Math.abs(r-z)<16)||Math.abs(n-world.canalX)<15)continue;
+    const x=n+(Math.round(z/45)%2?9.7:-9.7);
+    if(world.colliders.some(c=>Math.abs(c.x-x)<c.w+1&&Math.abs(c.z-z)<c.d+1))continue;
+    make(Math.abs(Math.round((n+z)/5))%3===0?'banco':'cartel',x,z,Math.PI/2);
+    make('maceta',x,z+4);
+  }
+  // Plaza San Martín, Buen Pastor and the church forecourts.
+  for(const [cx,cz] of [[50,-50],[150,75],[150,112]]){
+    for(const dx of [-28,-14,0,14,28])for(const dz of [-17,17])make('banco',cx+dx,cz+dz);
+    for(const dx of [-15,-10,10,15])make('reja',cx+dx,cz-21);
+    make('puesto',cx+26,cz);make('cartel',cx-25,cz+5);
+    for(const [type,dx,dz] of [['flores',-26,-5],['ropa',25,8],['carrito',-22,8],['revistas',12,-24]])if(usable(cx+dx,cz+dz))make(type,cx+dx,cz+dz);
+    for(const dx of [-26,0,26])make('papelera',cx+dx,cz+22);
+  }
+  for(let z=-270;z<300;z+=18)if(!world.roads.some(n=>Math.abs(n-z)<15)){make('banco',world.canalX+10.5,z,Math.PI/2);make('papelera',world.canalX+10.5,z+4);}
+  for(const [x,z] of [[-89,176],[38,-88],[162,90]]){make('flores',x,z);make('ropa',x,z+7);make('carrito',x,z-7);for(const dx of [-4,4])make('bolardo',x+dx,z+11);}
+  // Immediately visible, reachable props beside all three starting locations.
+  cafe(-97,175);
+  for(const [x,z] of [[50,-108],[150,113]]){make('cartel',x-5,z);make('reja',x+5,z);make('maceta',x+8,z+1);}
+  for(const [i,person] of world.people.filter(p=>p.walk).filter((_,i)=>i%9===0).entries()){
+    const p=make(i%2?'bandeja':'bolsa',.7,.15,0,person.mesh);p.owner=person;
+  }
+  const batches=[];const zero=new THREE.Matrix4().makeScale(0,0,0);
+  for(const items of groups.values()){
+    const batch=new THREE.InstancedMesh(items[0].mesh.geometry,items[0].mesh.material,items.length);batch.castShadow=false;batch.receiveShadow=true;batch.frustumCulled=false;scene.add(batch);batches.push({batch,items});
+  }
+  function update(){
+    if(dirty)for(const p of props)if(!p.carried)p.mesh.updateWorldMatrix(true,true);
+    for(const p of props)if(p.carried){p.mesh.updateWorldMatrix(true,true);const v=p.mesh.getWorldPosition(new THREE.Vector3());p.x=v.x;p.z=v.z;}
+    for(const {batch,items} of batches){let changed=false;items.forEach(({prop,mesh},i)=>{
+      if(!dirty&&!prop.carried)return;
+      batch.setMatrixAt(i,!prop.broken&&prop.mesh.visible&&(!prop.owner||prop.owner.mesh.visible)?mesh.matrixWorld:zero);changed=true;
+    });if(changed)batch.instanceMatrix.needsUpdate=true;}
+    dirty=false;
+  }
+  function reset(){for(const p of props){p.broken=false;p.mesh.visible=true;}dirty=true;update();}
+  update();for(const p of props)if(!p.carried)p.mesh.removeFromParent();
+  return {props,update,reset,drawCalls:batches.length};
+}

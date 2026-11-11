@@ -1,0 +1,72 @@
+:root{--rapi-purple:#2c2b67;--rapi-yellow:#fbdb6e;--rapi-paper:#faf9ff}
+body:not(.playing) .vignette{background:linear-gradient(90deg,#181635e8,transparent 85%),linear-gradient(0deg,#2c2b6780,transparent 70%)}
+#intro{top:50%;bottom:auto;left:5%;transform:translateY(-50%)!important;width:390px;max-width:calc(100% - 32px);padding:26px;background:var(--rapi-paper);color:var(--rapi-purple);border:1px solid #ffffffa6;border-radius:24px;box-shadow:0 18px 70px #13112d50}
+#intro .menu-brand{display:flex;align-items:center;gap:13px;margin-bottom:22px}
+#intro .menu-brand img{width:66px;height:43px;object-fit:contain}
+#intro .menu-brand>span{font-size:9px;font-weight:800;letter-spacing:1.5px;padding-left:13px;border-left:1px solid #2c2b6728}
+#exit-game{display:none;margin-left:auto;width:32px;height:32px;border-radius:50%;background:#2c2b670d;color:var(--rapi-purple);border:0;font-size:16px}
+body.native-app #exit-game{display:block}
+#intro .eyebrow{font-size:10px;letter-spacing:1.8px;font-weight:800;color:#716e99;display:flex}
+#intro .eyebrow .small-line{background:var(--rapi-purple);width:18px}
+#intro h1{font:900 54px/.97 'Barlow Condensed',sans-serif!important;letter-spacing:-1px;text-shadow:none;color:var(--rapi-purple);margin:13px 0!important}
+#intro h1 span{color:var(--rapi-purple);background:linear-gradient(transparent 58%,var(--rapi-yellow) 58%);-webkit-text-stroke:0}
+#intro .intro-copy{display:block;font-size:12px;line-height:1.65;color:#686582;margin:16px 0 20px}
+#intro .mode-label{display:flex;justify-content:space-between;color:var(--rapi-purple);font-size:10px;font-weight:800;letter-spacing:1px;margin:0 0 10px}
+#intro .mode-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+#intro .mode{display:grid;grid-template-columns:1fr auto;width:100%;align-items:center;gap:8px;text-align:left;padding:13px 11px;min-height:96px;border:1.5px solid #dedce9;border-radius:13px;background:white;color:var(--rapi-purple);box-shadow:none;transform:none}
+#intro .mode>span:nth-child(2){grid-column:1/-1;grid-row:2}
+#intro .mode.selected{border-color:var(--rapi-purple);background:#f0eefb;box-shadow:inset 0 0 0 .5px var(--rapi-purple)}
+#intro .mode .mode-icon{display:flex;align-items:center;justify-content:center;font-size:23px;width:31px;height:31px;border-radius:9px;color:var(--rapi-purple);background:var(--rapi-yellow)}
+#intro .mode strong{display:block;font-size:12px;font-weight:800}
+#intro .mode small{display:block;font-size:9px;color:#78748e;margin-top:4px}
+#intro .mode .radio{grid-column:2;grid-row:1;margin-left:auto;width:13px;height:13px;border-color:#b6b2cc;align-self:center}
+#intro .mode.selected .radio{background:var(--rapi-purple);border-color:var(--rapi-purple);box-shadow:inset 0 0 0 3px #f0eefb}
+#intro .start-button{display:flex;align-items:center;justify-content:space-between;width:100%;height:53px;padding:0 18px;background:var(--rapi-yellow);color:var(--rapi-purple);border:0;border-radius:13px;box-shadow:0 4px 0 #e3c04b;font:800 17px 'Barlow Condensed',sans-serif;letter-spacing:.5px;transform:none}
+#intro .start-button:hover{background:#ffe58a}
+#intro .start-button span{font-size:25px}
+#intro .start-hint{display:flex;align-items:center;flex-wrap:wrap;gap:5px;font-size:10px;color:#79758c;margin-top:17px;letter-spacing:0}
+#intro .start-hint button{color:var(--rapi-purple);font-size:10px;font-weight:700}
+#intro .menu-round{margin-left:auto;font-size:9px}
+body.touch-driving #intro .menu-keyboard{display:none}
+#intro .best-line{display:flex;border-top:1px solid #e3e0ec;margin-top:17px;padding-top:13px;color:#77728e;font-size:9px;letter-spacing:.8px;gap:7px}
+#intro .best-line>span{color:var(--rapi-purple)}
+#intro .best-line strong{color:var(--rapi-purple);font-size:15px;margin-left:auto}
+.modal{background:var(--rapi-purple);border-color:#ffffff40;border-radius:20px}
+.modal .start-button{background:var(--rapi-yellow);color:var(--rapi-purple);border-radius:12px}
+.modal .eyebrow,.modal .control-row span,.modal .stat-row strong{color:var(--rapi-yellow)}
+.loading{background:var(--rapi-purple);color:var(--rapi-yellow)}
+@media(max-width:600px){
+ #intro{left:16px;top:auto;bottom:max(18px,env(safe-area-inset-bottom));transform:none!important;width:calc(100% - 32px);max-width:none;padding:22px;border-radius:22px}
+ #intro .menu-brand{margin-bottom:16px}
+ #intro h1{font-size:48px!important}
+ #intro .intro-copy{margin:13px 0 17px;font-size:11px}
+ body:not(.playing) .location{top:18px;right:16px;font-size:8px}
+ body:not(.playing) .city-caption,body:not(.playing) .scene-label{display:none}
+ #intro .mode{padding:11px 9px;min-height:76px;gap:6px}
+ #intro .mode strong{font-size:11px}
+}
+@media(max-height:600px){
+ #intro{top:12px;bottom:12px;left:16px;transform:none!important;width:354px;padding:16px 20px;overflow-y:auto;max-height:calc(100% - 24px);border-radius:18px}
+ #intro .menu-brand{margin-bottom:10px}
+ #intro .menu-brand img{height:32px}
+ #intro h1{font-size:37px!important;margin:9px 0!important}
+ #intro .intro-copy{margin:9px 0;font-size:10px}
+ #intro .mode{min-height:64px;padding:9px}
+ #intro .mode-label{margin-bottom:7px}
+ #intro .mode-picker{margin-bottom:10px}
+ #intro .start-button{height:44px}
+ #intro .best-line{display:none}
+ #intro .start-hint{margin-top:12px}
+}
+
+/* A simple entry screen leaves the city visible and one clear action. */
+body:not(.playing) .topbar,body:not(.playing) footer,body:not(.playing) .location,
+body:not(.playing) .city-caption,body:not(.playing) .scene-label{display:none}
+body:not(.playing) #game-shell{height:100dvh;min-height:0}
+body:not(.playing) #intro{top:50%;bottom:auto;left:50%;transform:translate(-50%,-50%)!important;width:min(360px,calc(100% - 36px));max-height:calc(100dvh - 36px);overflow-y:auto;padding:26px;border-radius:20px}
+body:not(.playing) #intro .intro-copy,body:not(.playing) #intro .start-hint,body:not(.playing) #intro .best-line{display:none}
+body:not(.native-app) #intro .menu-brand{display:none}
+body.native-app #intro .menu-brand span{display:none}
+body:not(.playing) #intro h1{font-size:clamp(48px,12vw,68px)!important;margin:20px 0 24px!important}
+body:not(.playing) #intro .start-button{height:54px;margin:0}
+@media(max-height:450px){body:not(.playing) #intro{padding:16px 22px}body:not(.playing) #intro h1{font-size:40px!important;margin:9px 0 12px!important}body:not(.playing) #intro .start-button{height:42px}}
