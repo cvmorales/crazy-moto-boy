@@ -1,7 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import {RoundedBoxGeometry} from '../vendor/addons/RoundedBoxGeometry.js';
 import {mergeGeometries} from '../vendor/addons/utils/BufferGeometryUtils.js';
-import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.28';
+import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.29';
 
 /** Original, editable architectural set for the La Cañada / Bv. San Juan pilot.
  * Real landmarks are interpreted at arcade scale. Units are metres. */
@@ -251,7 +251,19 @@ export function createCordobaArchitecture(world,maps={}){
       const faces=[[Math.PI,w,0,-d/2-.05],[0,w,0,d/2+.05],[-Math.PI/2,d,-w/2-.05,0],[Math.PI/2,d,w/2+.05,0]];
     for(const [rot,width,xx,zz] of faces){
       const face=faceGroup(xx,0,zz,rot,g);
-      if(!detailed){cornice(width,h,.1,face);continue;}
+      if(!detailed){
+        // Projecting slabs and railings break up the flat skyline while the
+        // facade texture keeps windows and interiors inexpensive to render.
+        if(h>16&&Math.abs(Math.round(b.x/36)+Math.round(b.z/36))%3===0){
+          const balconyWidth=width*.72;
+          for(let y=7.2;y<h-2;y+=7.2){
+            box(balconyWidth,.17,1.1,cream,0,y,.56,face);
+            box(balconyWidth,.08,.08,iron,0,y+1.05,1.08,face);
+            for(let x=-balconyWidth/2;x<=balconyWidth/2;x+=2.5)box(.07,1.0,.07,iron,x,y+.55,1.08,face);
+          }
+        }
+        cornice(width,h,.1,face);continue;
+      }
       const count=Math.max(2,Math.floor(width/5)),bay=width/count;
       for(let i=0;i<count;i++){
         const x=(i-(count-1)/2)*bay;

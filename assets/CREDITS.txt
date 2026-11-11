@@ -56,3 +56,10 @@ Fuentes Barlow Condensed y DM Sans incluidas localmente, SIL Open Font License. 
 Materiales de fachadas: brick_wall_005 y rectangular_facade_tiles, Poly Haven, CC0.
 https://polyhaven.com/a/brick_wall_005
 https://polyhaven.com/a/rectangular_facade_tiles
+
+Auto sedán: White four-door sedan, Innerscene, CC0. Adaptación: reducción de polígonos y materiales para el juego.
+https://www.innerscene.com/tools/library/3d-parts/white-four-door-sedan-1f271353
+Peatones Punk y dos variantes Man: Quaternius, Poly Pizza, CC0.
+https://poly.pizza/m/BTALZymknF
+https://poly.pizza/m/fjHyMd5Wxw
+https://poly.pizza/m/HMnuH5geEG

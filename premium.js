@@ -2,17 +2,17 @@ import * as THREE from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/addons/loaders/GLTFLoader.js';
 import {HDRLoader} from './vendor/addons/loaders/HDRLoader.js';
 import {clone as cloneRig} from './vendor/addons/utils/SkeletonUtils.js';
-import {poseCourierDriver} from './art/courier-pose.js?v=0.28';
+import {poseCourierDriver} from './art/courier-pose.js?v=0.29';
 import {Sky} from './vendor/addons/Sky.js';
-import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.28';
-import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.28';
-import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.28';
+import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.29';
+import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.29';
+import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.29';
 
 export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState}) {
   const gltf=new GLTFLoader(),textures=new THREE.TextureLoader();
   const loadModel=name=>gltf.loadAsync(`./assets/models/${name}.glb`);
-  const [hoodie,casual,woman,motorcycle,car,suv,bus,sport,environment,roadColor,roadNormal,roadRough]=await Promise.all([
-    ...['hoodie','casual','woman','motorcycle','car','suv','bus','sport'].map(loadModel),
+  const [hoodie,casual,woman,punk,man,man2,motorcycle,car,suv,bus,sport,modern,environment,roadColor,roadNormal,roadRough]=await Promise.all([
+    ...['hoodie','casual','woman','punk','man','man2','motorcycle','car','suv','bus','sport','modern-sedan'].map(loadModel),
     new HDRLoader().loadAsync('./assets/textures/daylight.hdr'),
     textures.loadAsync('./assets/textures/asphalt-color.jpg'),textures.loadAsync('./assets/textures/asphalt-normal.jpg'),textures.loadAsync('./assets/textures/asphalt-rough.jpg')
   ]);
@@ -52,7 +52,7 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
     const clone=cloneRig(source.scene);clone.updateMatrixWorld(true);
     const bounds=new THREE.Box3().setFromObject(clone),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
     const scale=height/size.y;const root=new THREE.Group();clone.scale.multiplyScalar(scale);clone.position.set(-center.x*scale,-bounds.min.y*scale,-center.z*scale);root.add(clone);
-    clone.traverse(m=>{if(m.isMesh){m.castShadow=false;m.receiveShadow=true;if(m.material){m.material=m.material.clone();m.material.roughness=.78;if(clothingColor&&/^(Purple|Red_Dark|Red|LimeGreen)$/i.test(m.material.name))m.material.color.set(clothingColor);if(clothingColor&&/^Skin$/i.test(m.material.name))m.material.color.set(['#f1c3a2','#d79a72','#b87553','#875138','#ecc2a1','#a96749'][variation%6]);if(clothingColor&&/^Hair$/i.test(m.material.name))m.material.color.set(['#34231b','#272224','#68452d','#201b1a','#a07043','#3b2723'][variation%6]);if(clothingColor&&/^(LightBlue|LightBrown|Brown)$/i.test(m.material.name))m.material.color.set(['#33485c','#665448','#252c3a','#798084','#4b4a49','#596b78'][variation%6]);}}});
+    clone.traverse(m=>{if(m.isMesh){m.castShadow=false;m.receiveShadow=true;if(m.material){m.material=m.material.clone();m.material.roughness=.78;if(clothingColor&&/^(Purple|Red_Dark|Red|LimeGreen|Shirt|Shirt2)$/i.test(m.material.name))m.material.color.set(clothingColor);if(clothingColor&&/^Skin$/i.test(m.material.name))m.material.color.set(['#f1c3a2','#d79a72','#b87553','#875138','#ecc2a1','#a96749'][variation%6]);if(clothingColor&&/^Hair2?$/i.test(m.material.name))m.material.color.set(['#34231b','#272224','#68452d','#201b1a','#a07043','#3b2723'][variation%6]);if(clothingColor&&/^(LightBlue|LightBrown|Brown|Pants)$/i.test(m.material.name))m.material.color.set(['#33485c','#665448','#252c3a','#798084','#4b4a49','#596b78'][variation%6]);}}});
     return {root,clone,scale,source};
   }
   // Details are shared by every traffic template and collected into the existing
@@ -68,10 +68,10 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
     else model.rotation.y=Math.PI;
     root.add(model);model.traverse(m=>{if(!m.isMesh)return;m.castShadow=true;m.receiveShadow=true;
       const original=m.material;m.material=original.clone();m.material.roughness=.4;m.material.metalness=.12;m.material.envMapIntensity=.8;
-      if(paint&&/White|LightBlue|Red_Dark/i.test(original.name)){m.material.color.set(paint);m.material.metalness=.3;m.material.roughness=.34;}
-      if(/Window/i.test(original.name)){m.material.color.set('#29475a');m.material.metalness=.35;m.material.roughness=.18;}
-      if(/Headlights/i.test(original.name)){m.material.emissive=new THREE.Color('#e2c988');m.material.emissiveIntensity=.24;}
-      if(/TailLights/i.test(original.name)){m.material.emissive=new THREE.Color('#a3190f');m.material.emissiveIntensity=.22;}
+      if(paint&&/^(White|LightBlue|Red_Dark|paint)$/i.test(original.name)){m.material.color.set(paint);m.material.metalness=.3;m.material.roughness=.34;}
+      if(/Window|^glass/i.test(original.name)){m.material.color.set('#29475a');m.material.metalness=.35;m.material.roughness=.18;}
+      if(/Headlights|^clearlens/i.test(original.name)){m.material.emissive=new THREE.Color('#e2c988');m.material.emissiveIntensity=.24;}
+      if(/TailLights|^redlens/i.test(original.name)){m.material.emissive=new THREE.Color('#a3190f');m.material.emissiveIntensity=.22;}
     });
     if(paint){
       const width=Math.min(size.x,size.z)*scale, end=length*.5;
@@ -143,11 +143,11 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
 
   // A bounded pool gives nearby citizens full skeletal animation. Farther people
   // keep a lightweight rig, preserving a busy city without hundreds of mixers.
-  const crowdSources=[casual,woman,hoodie],pool=[];
+  const crowdSources=[casual,woman,hoodie,punk,man,man2],pool=[];
   for(let i=0;i<18;i++){
     const palette=['#a54c36','#417c76','#365d91','#9b6b42','#86739e','#4d8060'];
-    const source=crowdSources[i%3],model=fitted(source,1.68+(i%3)*.045,palette[(i*5+Math.floor(i/3))%palette.length],i);const mixer=new THREE.AnimationMixer(model.clone),actions={};
-    for(const name of ['Walk','Idle','Wave']){const clip=source.animations.find(c=>c.name.endsWith('|'+name));if(clip)actions[name]=mixer.clipAction(clip);}
+    const source=crowdSources[i%crowdSources.length],model=fitted(source,1.68+(i%3)*.045,palette[(i*5+Math.floor(i/3))%palette.length],i);const mixer=new THREE.AnimationMixer(model.clone),actions={};
+    for(const name of ['Walk','Idle','Wave']){const clip=source.animations.find(c=>c.name.endsWith('|'+name)||c.name.endsWith('_'+name));if(clip)actions[name]=mixer.clipAction(clip);}
     pool.push({...model,mixer,actions,person:null,current:null});
   }
   let lodTimer=2;
@@ -162,7 +162,7 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
       if(slot.person!==person){person.mesh.add(slot.root);slot.root.position.set(0,0,0);slot.root.scale.setScalar(1);slot.person=person;}
       slot.root.visible=true;person.mesh.userData.highDetail=true;
       const action=person.waiting?'Wave':person.walk?'Walk':'Idle';
-      if(slot.current!==action){Object.values(slot.actions).forEach(a=>a.fadeOut(.2));slot.actions[action]?.reset().fadeIn(.2).play();slot.current=action;}
+      if(slot.current!==action){Object.values(slot.actions).forEach(a=>a.fadeOut(.2));(slot.actions[action]||slot.actions.Idle)?.reset().fadeIn(.2).play();slot.current=action;}
     });
   }
   assignCrowd();
@@ -172,8 +172,8 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
   vehicleBatches.forEach(({batch})=>batch.visible=false);
   const templates=new Map(),premiumCars=[],vehicleGroups=new Map();
   cars.forEach((c,i)=>{
-    const kind=c.bus?'bus':i%11===0?'truck':i%5===0?'suv':i%7===0?'sport':'car',paint=['#f7c82e','#ed653b','#4a9a8c','#cbdce2','#3486b4','#e8e1c9','#f4f1e8','#9d5e53'][i%8],key=kind+paint;
-    if(!templates.has(key))templates.set(key,kind==='truck'?makeDeliveryTruck(paint):fitVehicle({car,suv,bus,sport}[kind],c.bus?8.1:4.5,c.bus?null:paint));
+    const kind=c.bus?'bus':i%11===0?'truck':i%9===0?'modern':i%5===0?'suv':i%7===0?'sport':'car',paint=['#f7c82e','#ed653b','#4a9a8c','#cbdce2','#3486b4','#e8e1c9','#f4f1e8','#9d5e53'][i%8],key=kind+paint;
+    if(!templates.has(key))templates.set(key,kind==='truck'?makeDeliveryTruck(paint):fitVehicle({car,suv,bus,sport,modern}[kind],c.bus?8.1:4.5,c.bus?null:paint));
     const root=templates.get(key).clone(true);premiumCars.push({root,car:c});c.mesh.removeFromParent();
     root.traverse(m=>{if(!m.isMesh)return;const key=m.geometry.uuid+':'+m.material.uuid;if(!vehicleGroups.has(key))vehicleGroups.set(key,[]);vehicleGroups.get(key).push(m);m.visible=false;});
   });
