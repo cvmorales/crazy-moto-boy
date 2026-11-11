@@ -1,11 +1,11 @@
 import * as THREE from './vendor/three.module.js';
-import {buildCity} from './city.js?v=0.29';
-import {createArcadeEffects} from './effects.js?v=0.29';
-import {actorFactory} from './actors.js?v=0.29';
-import {createStreetProps} from './art/street-props.js?v=0.29';
-import {createTouchDrive} from './touch-drive.js?v=0.29';
-import {drawNavigationMap} from './navigation-map.js?v=0.29';
-import {installGameHost} from './android-host.js?v=0.29';
+import {buildCity} from './city.js?v=0.30';
+import {createArcadeEffects} from './effects.js?v=0.30';
+import {actorFactory} from './actors.js?v=0.30';
+import {createStreetProps} from './art/street-props.js?v=0.30';
+import {createTouchDrive} from './touch-drive.js?v=0.30';
+import {drawNavigationMap} from './navigation-map.js?v=0.30';
+import {installGameHost} from './android-host.js?v=0.30';
 
 const $ = (id) => document.getElementById(id);
 const isPilot=document.body.dataset.pilot==='true';
@@ -512,7 +512,7 @@ camera.position.set(...startZone().preview);camera.lookAt(...startZone().look);
 renderer.render(scene,camera);requestAnimationFrame(animate);
 if(isPilot){
   $('loading').innerHTML='<span class="loader"></span> Cargando';
-  import('./premium.js?v=0.29').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
+  import('./premium.js?v=0.30').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
     console.error('No se pudo cargar la zona piloto',error);
     $('loading').innerHTML='<div style="max-width:330px;line-height:1.8;text-align:center">No se pudieron cargar los modelos de la zona piloto. <br><button id="retry-assets" class="start-button">REINTENTAR ↗</button></div>';
     $('retry-assets').onclick=()=>window.location.reload();

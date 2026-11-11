@@ -1,7 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 import {RoundedBoxGeometry} from '../vendor/addons/RoundedBoxGeometry.js';
 import {mergeGeometries} from '../vendor/addons/utils/BufferGeometryUtils.js';
-import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.29';
+import {buildCordobaLandmarks} from './cordoba-landmarks.js?v=0.30';
 
 /** Original, editable architectural set for the La Cañada / Bv. San Juan pilot.
  * Real landmarks are interpreted at arcade scale. Units are metres. */
@@ -400,10 +400,14 @@ export function createCordobaArchitecture(world,maps={}){
   for(const [text,x,z,rot] of [['BV. SAN JUAN',-91,7,0],['MARCELO T. DE ALVEAR',-109,110,-Math.PI/2],['LA CAÑADA',cx-7,8,0]]){
     column(.045,3.4,iron,x,1.7,z);sign(text,x,3.1,z+.03,3.3,'#244b38','#f6e9cb',rot);
   }
-  // Contemporary Córdoba skyline: no empty horizon beyond the pilot boundary.
-  for(let i=0;i<24;i++){
-    const a=i/24*Math.PI*2,r=390+rand()*90,x=Math.cos(a)*r,z=Math.sin(a)*r,h=30+rand()*55;
-    box(22+rand()*14,h,24+rand()*14,mat('Fondo_'+i%3,['#baac95','#a0afa8','#c0b4a1'][i%3]),x,h/2,z);
+  // Skyline is scenery, not a driveable obstacle. Place every entire box
+  // outside the square playable area, including its width and depth.
+  const skyline=faceGroup(0,0,0,0);skyline.name='Fondo_Fuera_Del_Mapa';
+  for(let side=0;side<4;side++)for(let i=0;i<6;i++){
+    const along=(i-2.5)*(districtLimit*2/6),out=districtLimit+70+rand()*30;
+    const x=side===0?out:side===1?-out:along;
+    const z=side===2?out:side===3?-out:along,h=30+rand()*55;
+    box(22+rand()*14,h,24+rand()*14,mat('Fondo_'+i%3,['#baac95','#a0afa8','#c0b4a1'][i%3]),x,h/2,z,skyline);
   }
   buildCordobaLandmarks({world,root,mat,box,column,beam,add,faceGroup,archFrame,roundArch,cornice,window});
   root.userData={...root.userData,originalArchitecture:true,arcadeScale:true};
