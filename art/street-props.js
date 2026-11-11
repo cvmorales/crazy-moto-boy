@@ -98,6 +98,17 @@ export function createStreetProps({THREE,scene,world}){
     make(Math.abs(Math.round((n+z)/5))%3===0?'banco':'cartel',x,z,Math.PI/2);
     make('maceta',x,z+4);
   }
+  // Both banks of each La Cañada bridge have breakable objects near the
+  // edges of the approach. The middle of the carriageway remains clear.
+  const bridgeProps=[['bolardo',14,5.4],['cartel',20,-5.4],['maceta',26,5.4],['papelera',31,-5.4]];
+  for(const bridgeZ of world.roads)for(const bank of [-1,1]){
+    for(const [type,offset,dz] of bridgeProps){
+      const x=world.canalX+bank*offset,z=bridgeZ+dz;
+      if(Math.abs(x)>world.limit-3||Math.abs(z)>world.limit-3||!usable(x,z,1.6))continue;
+      const prop=make(type,x,z,bank*Math.PI/2);
+      prop.bridgeApproach=bridgeZ;prop.bridgeBank=bank;
+    }
+  }
   // Plaza San Martín, Buen Pastor and the church forecourts.
   for(const [cx,cz] of [[50,-50],[150,75],[150,112]]){
     for(const dx of [-28,-14,0,14,28])for(const dz of [-17,17])make('banco',cx+dx,cz+dz);
