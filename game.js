@@ -1,11 +1,11 @@
 import * as THREE from './vendor/three.module.js';
-import {buildCity} from './city.js?v=0.30';
-import {createArcadeEffects} from './effects.js?v=0.30';
-import {actorFactory} from './actors.js?v=0.30';
-import {createStreetProps} from './art/street-props.js?v=0.30';
-import {createTouchDrive} from './touch-drive.js?v=0.30';
-import {drawNavigationMap} from './navigation-map.js?v=0.30';
-import {installGameHost} from './android-host.js?v=0.30';
+import {buildCity} from './city.js?v=0.31';
+import {createArcadeEffects} from './effects.js?v=0.31';
+import {actorFactory} from './actors.js?v=0.31';
+import {createStreetProps} from './art/street-props.js?v=0.31';
+import {createTouchDrive} from './touch-drive.js?v=0.31';
+import {drawNavigationMap} from './navigation-map.js?v=0.31';
+import {installGameHost} from './android-host.js?v=0.31';
 
 const $ = (id) => document.getElementById(id);
 const isPilot=document.body.dataset.pilot==='true';
@@ -282,7 +282,7 @@ function finishGame() {
   const record=state.cash>state.best;
   if(record) {state.best=state.cash;try{localStorage.setItem('crazy-moto-best-points',String(state.best));}catch{}}
   $('best').textContent=points(state.best);
-  modal(`<div class="eyebrow">${record?'★ NUEVO RÉCORD PERSONAL':'TURNO TERMINADO'}</div><h2 id="modal-title">${state.completed>=3?'¡UNA LOCURA, CULIAU!':state.completed?'BIEN AHÍ, CHE.':'LA CALLE TE ESPERA.'}</h2><p>${state.completed?'Se terminó el turno. La moto descansa y tus puntos quedan registrados.':'El reloj te ganó esta vez. Seguí el GPS y frená dentro de la marca amarilla.'}</p><div class="stat-row"><div><small>PUNTOS</small><strong>${points(state.cash)}</strong></div><div><small>ENTREGAS</small><strong>${state.completed}</strong></div><div><small>RANGO</small><strong>${state.completed>=5?'S':state.completed>=3?'A':state.completed?'B':'C'}</strong></div></div><button class="start-button" id="again">OTRA VUELTA <span>↗</span></button><button class="secondary" id="menu">Volver al inicio</button>`);
+  modal(`<div class="eyebrow">${record?'★ NUEVO RÉCORD PERSONAL':'TURNO TERMINADO'}</div><h2 id="modal-title">${state.completed>=3?'¡UNA LOCURA!':state.completed?'BIEN AHÍ, CHE.':'LA CALLE TE ESPERA.'}</h2><p>${state.completed?'Se terminó el turno. La moto descansa y tus puntos quedan registrados.':'El reloj te ganó esta vez. Seguí el GPS y frená dentro de la marca amarilla.'}</p><div class="stat-row"><div><small>PUNTOS</small><strong>${points(state.cash)}</strong></div><div><small>ENTREGAS</small><strong>${state.completed}</strong></div><div><small>RANGO</small><strong>${state.completed>=5?'S':state.completed>=3?'A':state.completed?'B':'C'}</strong></div></div><button class="start-button" id="again">OTRA VUELTA <span>↗</span></button><button class="secondary" id="menu">Volver al inicio</button>`);
   $('again').onclick=startGame;$('menu').onclick=goMenu;
   gameHost.send('finished',{mode:state.mode,score:state.cash,completed:state.completed});
 }
@@ -512,7 +512,7 @@ camera.position.set(...startZone().preview);camera.lookAt(...startZone().look);
 renderer.render(scene,camera);requestAnimationFrame(animate);
 if(isPilot){
   $('loading').innerHTML='<span class="loader"></span> Cargando';
-  import('./premium.js?v=0.30').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
+  import('./premium.js?v=0.31').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
     console.error('No se pudo cargar la zona piloto',error);
     $('loading').innerHTML='<div style="max-width:330px;line-height:1.8;text-align:center">No se pudieron cargar los modelos de la zona piloto. <br><button id="retry-assets" class="start-button">REINTENTAR ↗</button></div>';
     $('retry-assets').onclick=()=>window.location.reload();
