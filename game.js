@@ -1,14 +1,14 @@
 import * as THREE from './vendor/three.module.js';
-import {buildCity} from './city.js?v=0.34';
-import {buildRealCity} from './real-city.js?v=0.34';
-import {nearestSegment,routeBetween} from './real-network.js?v=0.34';
-import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.34';
-import {createArcadeEffects} from './effects.js?v=0.34';
-import {actorFactory} from './actors.js?v=0.34';
-import {createStreetProps} from './art/street-props.js?v=0.34';
-import {createTouchDrive} from './touch-drive.js?v=0.34';
-import {drawNavigationMap} from './navigation-map.js?v=0.34';
-import {installGameHost} from './android-host.js?v=0.34';
+import {buildCity} from './city.js?v=0.35';
+import {buildRealCity} from './real-city.js?v=0.35';
+import {nearestSegment,routeBetween} from './real-network.js?v=0.35';
+import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.35';
+import {createArcadeEffects} from './effects.js?v=0.35';
+import {actorFactory} from './actors.js?v=0.35';
+import {createStreetProps} from './art/street-props.js?v=0.35';
+import {createTouchDrive} from './touch-drive.js?v=0.35';
+import {drawNavigationMap} from './navigation-map.js?v=0.35';
+import {installGameHost} from './android-host.js?v=0.35';
 
 const $ = (id) => document.getElementById(id);
 const isPilot=document.body.dataset.pilot==='true';
@@ -528,7 +528,7 @@ camera.position.set(...startZone().preview);camera.lookAt(...startZone().look);
 renderer.render(scene,camera);requestAnimationFrame(animate);
 if(isPilot){
   $('loading').innerHTML='<span class="loader"></span> Cargando';
-  import('./premium.js?v=0.34').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
+  import('./premium.js?v=0.35').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
     console.error('No se pudo cargar la zona piloto',error);
     $('loading').innerHTML='<div style="max-width:330px;line-height:1.8;text-align:center">No se pudieron cargar los modelos de la zona piloto. <br><button id="retry-assets" class="start-button">REINTENTAR ↗</button></div>';
     $('retry-assets').onclick=()=>window.location.reload();

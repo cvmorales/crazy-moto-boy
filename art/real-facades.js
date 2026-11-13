@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
-import {nearestSegment} from '../real-network.js?v=0.34';
+import {nearestSegment} from '../real-network.js?v=0.35';
 
 // Repeated street-level details share geometry and materials for mobile devices.
 export function addRealFacades(root,world){
@@ -36,13 +36,13 @@ export function addRealFacades(root,world){
     const m=new THREE.InstancedMesh(new THREE.PlaneGeometry(3.4,.65),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}),signs[index].length);m.name='Carteles_De_Locales';signs[index].forEach((p,i)=>{dummy.position.set(p.x,3.85,p.z);dummy.rotation.set(0,p.angle,0);dummy.scale.set(1,1,1);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);});group.add(m);
   });
   for(const gallery of world.galleries){
-    const arcade=new THREE.Group();arcade.name='Galeria_Entrable_Real';arcade.position.set(gallery.x,0,gallery.z);if(gallery.axis==='z')arcade.rotation.y=Math.PI/2;group.add(arcade);
+    const arcade=new THREE.Group();arcade.name='Galeria_Entrable_Real';arcade.position.set(gallery.x,0,gallery.z);if(gallery.axis==='z')arcade.rotation.y=Math.PI/2;else if(gallery.axis==='path')arcade.rotation.y=-Math.atan2(gallery.dz,gallery.dx);group.add(arcade);const length=gallery.length||12;
     const place=(w,h,d,x,y,z,mat)=>{const m=new THREE.Mesh(box,mat);m.scale.set(w,h,d);m.position.set(x,y,z);arcade.add(m);};
     const roof=new THREE.MeshStandardMaterial({color:'#d4c5a1',roughness:.9}),glass=new THREE.MeshStandardMaterial({color:'#75b6c1',transparent:true,opacity:.6,side:THREE.DoubleSide}),accent=new THREE.MeshStandardMaterial({color:'#b04f39'});
-    place(12,.18,6.3,0,4.1,0,glass);for(const x of [-5.7,0,5.7])place(.16,.2,6.4,x,4.15,0,roof);
-    for(const z of [-3.1,3.1]){place(12,.35,.22,0,3.6,z,roof);for(const x of [-4,0,4]){place(2.7,2.3,.10,x,1.4,z,materials[0]);place(3,.22,.5,x,2.8,z,accent);}}
+    place(length,.18,6.3,0,4.1,0,glass);for(let x=-length/2+.3;x<length/2;x+=5.7)place(.16,.2,6.4,x,4.15,0,roof);
+    for(const z of [-3.1,3.1]){place(length,.35,.22,0,3.6,z,roof);for(let x=-length/2+2;x<length/2;x+=4){place(2.7,2.3,.10,x,1.4,z,materials[0]);place(3,.22,.5,x,2.8,z,accent);}}
     const canvas=document.createElement('canvas');canvas.width=512;canvas.height=96;const c=canvas.getContext('2d');c.fillStyle='#245c56';c.fillRect(0,0,512,96);c.fillStyle='#fff3ca';c.textAlign='center';c.textBaseline='middle';c.font='bold 35px sans-serif';c.fillText(gallery.name,256,48,490);
-    const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;const sign=new THREE.Mesh(new THREE.PlaneGeometry(6.2,1),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));sign.rotation.y=Math.PI/2;sign.position.set(5.9,4.65,0);arcade.add(sign);const sign2=sign.clone();sign2.position.x=-5.9;arcade.add(sign2);
+    const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;const sign=new THREE.Mesh(new THREE.PlaneGeometry(6.2,1),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));sign.rotation.y=Math.PI/2;sign.position.set(length/2-.1,4.65,0);arcade.add(sign);const sign2=sign.clone();sign2.position.x=-length/2+.1;arcade.add(sign2);
   }
   group.userData.storefronts=storefronts;group.userData.galleries=world.galleries.length;
 }

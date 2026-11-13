@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {mergeGeometries} from './vendor/addons/utils/BufferGeometryUtils.js';
-import {buildNetwork,project,nearestSegment} from './real-network.js?v=0.34';
+import {buildNetwork,project,nearestSegment} from './real-network.js?v=0.35';
 
 // OSM positions are projected at approximately one world unit per metre.
 // Building heights are estimated only where the source has no height/levels.
@@ -74,6 +74,19 @@ export function createRealWorld(data){
     for(const b of buildingGrid.get(Math.floor(x/cellSize)+':'+Math.floor(z/cellSize))||[]){const q=b.bounds;if(x>=q.minX&&x<=q.maxX&&z>=q.minZ&&z<=q.maxZ&&inside(p,b.points))return true;}
     if(network.water.some(s=>distance(p,s.a,s.b)<5)&&!bridges.some(s=>distance(p,s.a,s.b)<width(s)/2+2))return true;
     return false;
+  }
+  // Fill some genuinely open gaps with walk-through, roofed shopping passages.
+  // Their entire footprint must clear the buildings, water and road carriageway.
+  for(const target of [project(-31.41978,-64.18805),project(-31.4218,-64.1891),pastor,project(-31.4260,-64.1860),plaza]){
+    const options=network.segments.filter(s=>s.length>=24&&s.tunnel!=='yes'&&s.bridge!=='yes').sort((a,b)=>Math.hypot((a.a.x+a.b.x)/2-target.x,(a.a.z+a.b.z)/2-target.z)-Math.hypot((b.a.x+b.b.x)/2-target.x,(b.a.z+b.b.z)/2-target.z));
+    let chosen=null;
+    for(const s of options){if(Math.hypot((s.a.x+s.b.x)/2-target.x,(s.a.z+s.b.z)/2-target.z)>260)break;const dx=(s.b.x-s.a.x)/s.length,dz=(s.b.z-s.a.z)/s.length;
+      for(const side of [-1,1]){const offset=width(s)/2+8,x=(s.a.x+s.b.x)/2-side*dz*offset,z=(s.a.z+s.b.z)/2+side*dx*offset;
+        if(galleries.some(g=>Math.hypot(g.x-x,g.z-z)<60))continue;let clear=true;
+        for(let along=-12;along<=12&&clear;along+=3)for(const across of [-3,0,3]){const px=x+dx*along-dz*across,pz=z+dz*along+dx*across,snap=nearestSegment(network,{x:px,z:pz});if(blocked(px,pz)||snap.distance<width(snap.segment)/2+1){clear=false;break;}}
+        if(clear){chosen={x,z,axis:'path',dx,dz,length:24,name:'PASEO COMERCIAL'};break;}
+      }if(chosen)break;
+    }if(chosen)galleries.push(chosen);
   }
   function createScene(){
     const root=new THREE.Group();root.name='Cordoba_OSM_escala_metros';

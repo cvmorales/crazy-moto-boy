@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
-import {createCordobaArchitecture} from './cordoba-architecture.js?v=0.34';
-import {project} from '../real-network.js?v=0.34';
+import {createCordobaArchitecture} from './cordoba-architecture.js?v=0.35';
+import {project} from '../real-network.js?v=0.35';
 
 // Original landmark interpretations fitted into the mapped Córdoba district.
 export function addRealLandmarks(root,world,maps={}){

@@ -110,8 +110,9 @@ export function createStreetProps({THREE,scene,world}){
     for(const shop of world.restaurants){if(!shop.mesh.parent)continue;const x=shop.mesh.position.x,z=shop.mesh.position.z;
       for(const [type,dx,dz] of [['mesa',4,0],['silla',3,-1.4],['silla',5,1.4],['parasol',4,0],['cartel',-3,0]])if(!world.realWorld.blocked(x+dx,z+dz))make(type,x+dx,z+dz);
     }
-    for(const gallery of world.galleries||[])for(const along of [-4,0,4])for(const side of [-1,1]){
-      const x=gallery.x+(gallery.axis==='x'?along:side*2.3),z=gallery.z+(gallery.axis==='x'?side*2.3:along);
+    for(const gallery of world.galleries||[])for(let along=-(gallery.length||12)/2+2;along<(gallery.length||12)/2;along+=4)for(const side of [-1,1]){
+      const dx=gallery.axis==='path'?gallery.dx:gallery.axis==='x'?1:0,dz=gallery.axis==='path'?gallery.dz:gallery.axis==='x'?0:1;
+      const x=gallery.x+dx*along-dz*side*2.3,z=gallery.z+dz*along+dx*side*2.3;
       if(!world.realWorld.blocked(x,z)){const prop=make(side<0?'ropa':'revistas',x,z,gallery.axis==='x'?0:Math.PI/2);prop.gallery=gallery.name;}
     }
   }else{
