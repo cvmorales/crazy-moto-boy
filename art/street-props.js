@@ -91,9 +91,9 @@ export function createStreetProps({THREE,scene,world}){
   if(world.real){
     // Place small breakables along the actual road segments instead of the old grid.
     const types=['cartel','maceta','papelera','conoobra','cajonobra','silla','mesa','banco','flores','carrito','puesto','parasol','revistas'];let placed=0;
-    for(const segment of world.network.segments){if(segment.length<20||placed>=360)continue;
+    for(const segment of world.network.segments){if(segment.length<20||placed>=800)continue;
       const dx=segment.b.x-segment.a.x,dz=segment.b.z-segment.a.z,len=segment.length;
-      for(const side of [-1,1]){if(placed>=360)break;
+      for(const side of [-1,1]){if(placed>=800)break;
         const offset=segment.highway==='primary'?8.5:7.2;
         const x=(segment.a.x+segment.b.x)/2-side*dz/len*offset,z=(segment.a.z+segment.b.z)/2+side*dx/len*offset;
         if(world.realWorld.blocked(x,z))continue;make(types[placed%types.length],x,z,Math.atan2(dx,dz));placed++;
@@ -109,6 +109,10 @@ export function createStreetProps({THREE,scene,world}){
     // Cafe furniture near actual game pickup kiosks, kept off solid buildings.
     for(const shop of world.restaurants){if(!shop.mesh.parent)continue;const x=shop.mesh.position.x,z=shop.mesh.position.z;
       for(const [type,dx,dz] of [['mesa',4,0],['silla',3,-1.4],['silla',5,1.4],['parasol',4,0],['cartel',-3,0]])if(!world.realWorld.blocked(x+dx,z+dz))make(type,x+dx,z+dz);
+    }
+    for(const gallery of world.galleries||[])for(const along of [-4,0,4])for(const side of [-1,1]){
+      const x=gallery.x+(gallery.axis==='x'?along:side*2.3),z=gallery.z+(gallery.axis==='x'?side*2.3:along);
+      if(!world.realWorld.blocked(x,z)){const prop=make(side<0?'ropa':'revistas',x,z,gallery.axis==='x'?0:Math.PI/2);prop.gallery=gallery.name;}
     }
   }else{
   world.restaurants.forEach(s=>cafe(...s.pickup));

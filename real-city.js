@@ -1,9 +1,10 @@
-import {realMapData} from './real-map-data.js?v=0.33';
-import {createRealWorld} from './real-world.js?v=0.33';
-import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.33';
-import {actorFactory} from './actors.js?v=0.33';
-import {addRealLandmarks} from './art/real-landmarks.js?v=0.33';
-import {addRealStreetLife} from './art/real-street-life.js?v=0.33';
+import {realMapData} from './real-map-data.js?v=0.34';
+import {createRealWorld} from './real-world.js?v=0.34';
+import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.34';
+import {actorFactory} from './actors.js?v=0.34';
+import {addRealLandmarks} from './art/real-landmarks.js?v=0.34';
+import {addRealStreetLife} from './art/real-street-life.js?v=0.34';
+import {addRealFacades} from './art/real-facades.js?v=0.34';
 
 // Construct gameplay objects on a connected part of the real street graph.
 export function buildRealCity({THREE,scene,material,random}){
@@ -43,11 +44,6 @@ export function buildRealCity({THREE,scene,material,random}){
     let side=i%2?1:-1,x=p.x-side*dz*7,z=p.z+side*dx*7;if(real.blocked(x,z)){side=-side;x=p.x-side*dz*7;z=p.z+side*dx*7;}if(real.blocked(x,z)){x=p.x;z=p.z;}
     const pedestrian=person(x,z);pedestrian.baseX=x;pedestrian.walkDx=dx;pedestrian.walkDz=dz;
   }
-  const actorGroups=new Map();
-  for(const p of people)p.mesh.traverse(m=>{if(!m.isMesh)return;const key=m.geometry.uuid+':'+m.material.uuid;if(!actorGroups.has(key))actorGroups.set(key,[]);actorGroups.get(key).push({mesh:m,root:p.mesh});m.visible=false;});
-  const batches=[],zero=new THREE.Matrix4().makeScale(0,0,0);
-  for(const items of actorGroups.values()){const batch=new THREE.InstancedMesh(items[0].mesh.geometry,items[0].mesh.material,items.length);scene.add(batch);batches.push({batch,items});}
-  function updateCrowds(){for(const p of people)p.mesh.updateMatrixWorld(true);for(const {batch,items} of batches){items.forEach((o,i)=>batch.setMatrixAt(i,o.root.visible&&!o.root.userData.highDetail?o.mesh.matrixWorld:zero));batch.instanceMatrix.needsUpdate=true;}}
   const startCandidates=[];
   for(const id of connected){const p=network.nodes.get(id);if(restaurants.some(shop=>Math.hypot(p.x-shop.pickup[0],p.z-shop.pickup[1])<60))continue;
     for(const edge of network.adj.get(id)||[]){if(edge.length<35)continue;const target=network.nodes.get(edge.to),dx=(target.x-p.x)/edge.length,dz=(target.z-p.z)/edge.length;
@@ -59,6 +55,16 @@ export function buildRealCity({THREE,scene,material,random}){
   startCandidates.sort((a,b)=>a.z-b.z);
   const starts=[0,1,2].map(i=>startCandidates[Math.floor((i+.5)*startCandidates.length/3)]);
 
-  const realRoot=real.createScene();addRealLandmarks(realRoot,real);addRealStreetLife(realRoot,{network,realWorld:real});const realMaterials=new Map();realRoot.traverse(m=>{if(m.isMesh&&m.material?.name)realMaterials.set(m.material.name,m.material);});
-  return {real:true,realWorld:real,network,realArt:{root:realRoot,materials:realMaterials,streetLamps:realRoot.userData.streetLamps},starts,city,colliders,roads:[-400,-300,-200,-100,0,100,200,300,400],limit:1600,canalX:99999,restaurants,homes,breakables,people,buildings:[],label:()=>{},updateCrowds};
+  // Populate the streets the player actually sees, not just distant nodes.
+  for(const start of starts)for(const seg of network.segments){if(seg.length<16)continue;const dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length;
+    for(const side of [-1,1]){const x=(seg.a.x+seg.b.x)/2-side*dz*7,z=(seg.a.z+seg.b.z)/2+side*dx*7,d=Math.hypot(x-start.x,z-start.z);if(d<14||d>65||real.blocked(x,z))continue;if(people.some(p=>Math.hypot(p.mesh.position.x-x,p.mesh.position.z-z)<5))continue;const p=person(x,z);p.baseX=x;p.walkDx=dx;p.walkDz=dz;}
+  }
+  const actorGroups=new Map();
+  for(const p of people)p.mesh.traverse(m=>{if(!m.isMesh)return;const key=m.geometry.uuid+':'+m.material.uuid;if(!actorGroups.has(key))actorGroups.set(key,[]);actorGroups.get(key).push({mesh:m,root:p.mesh});m.visible=false;});
+  const batches=[],zero=new THREE.Matrix4().makeScale(0,0,0);
+  for(const items of actorGroups.values()){const batch=new THREE.InstancedMesh(items[0].mesh.geometry,items[0].mesh.material,items.length);scene.add(batch);batches.push({batch,items});}
+  function updateCrowds(){for(const p of people)p.mesh.updateMatrixWorld(true);for(const {batch,items} of batches){items.forEach((o,i)=>batch.setMatrixAt(i,o.root.visible&&!o.root.userData.highDetail?o.mesh.matrixWorld:zero));batch.instanceMatrix.needsUpdate=true;}}
+
+  const realRoot=real.createScene();addRealLandmarks(realRoot,real);addRealFacades(realRoot,real);addRealStreetLife(realRoot,{network,realWorld:real});const realMaterials=new Map();realRoot.traverse(m=>{if(m.isMesh&&m.material?.name)realMaterials.set(m.material.name,m.material);});
+  return {real:true,realWorld:real,network,galleries:real.galleries,realArt:{root:realRoot,materials:realMaterials,streetLamps:realRoot.userData.streetLamps},starts,city,colliders,roads:[-400,-300,-200,-100,0,100,200,300,400],limit:1600,canalX:99999,restaurants,homes,breakables,people,buildings:[],label:()=>{},updateCrowds};
 }

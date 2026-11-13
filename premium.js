@@ -2,11 +2,11 @@ import * as THREE from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/addons/loaders/GLTFLoader.js';
 import {HDRLoader} from './vendor/addons/loaders/HDRLoader.js';
 import {clone as cloneRig} from './vendor/addons/utils/SkeletonUtils.js';
-import {poseCourierDriver} from './art/courier-pose.js?v=0.33';
+import {poseCourierDriver} from './art/courier-pose.js?v=0.34';
 import {Sky} from './vendor/addons/Sky.js';
-import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.33';
-import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.33';
-import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.33';
+import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.34';
+import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.34';
+import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.34';
 
 export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState}) {
   const gltf=new GLTFLoader(),textures=new THREE.TextureLoader();
@@ -42,8 +42,9 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
     const c=document.createElement('canvas');c.width=c.height=256;const q=c.getContext('2d');q.fillStyle='#d8d8d2';q.fillRect(0,0,256,256);q.strokeStyle='#abaea9';q.lineWidth=2;for(let n=0;n<=256;n+=64){q.beginPath();q.moveTo(n,0);q.lineTo(n,256);q.stroke();q.beginPath();q.moveTo(0,n);q.lineTo(256,n);q.stroke();}
     let seed=173;for(let i=0;i<1400;i++){seed=(seed*1664525+1013904223)>>>0;const x=seed%256;seed=(seed*1664525+1013904223)>>>0;const y=seed%256;q.fillStyle=i%2?'rgba(70,70,65,.09)':'rgba(255,255,255,.18)';q.fillRect(x,y,1,1);}
     const concrete=new THREE.CanvasTexture(c);concrete.colorSpace=THREE.SRGBColorSpace;concrete.wrapS=concrete.wrapT=THREE.RepeatWrapping;
-    const ground=architecture.root.getObjectByName('Suelo_Real');if(ground){const t=concrete.clone();t.repeat.set(260,260);t.needsUpdate=true;ground.material.map=t;ground.material.color.set('#d3d3ce');ground.material.needsUpdate=true;}
-    const sidewalks=architecture.root.getObjectByName('Veredas_Reales');if(sidewalks){const t=concrete.clone();t.repeat.set(3,3);t.needsUpdate=true;sidewalks.material.map=t;sidewalks.material.color.set('#e1e2dc');sidewalks.material.needsUpdate=true;}
+    const ground=architecture.root.getObjectByName('Suelo_Real');if(ground){const t=concrete.clone();t.repeat.set(260,260);t.needsUpdate=true;ground.material.map=t;ground.material.color.set('#8b8e83');ground.material.needsUpdate=true;}
+    // Preserve the tiled sidewalk texture and keep it distinct from open ground.
+    const sidewalks=architecture.root.getObjectByName('Veredas_Reales');if(sidewalks){sidewalks.material.color.set('#ded6c8');sidewalks.material.needsUpdate=true;}
   }
   cityWorld.city.visible=false;
   for(const p of cityWorld.people){scene.add(p.mesh);if(cityWorld.real)continue;if(Math.abs(p.mesh.position.x+84)<.1)p.mesh.position.x=-89.5;else{const n=cityWorld.roads.reduce((a,b)=>Math.abs(b-p.mesh.position.x)<Math.abs(a-p.mesh.position.x)?b:a);if(Math.abs(p.mesh.position.x-n)>13&&Math.abs(p.mesh.position.x-n)<17)p.mesh.position.x=n+Math.sign(p.mesh.position.x-n)*10.5;}}

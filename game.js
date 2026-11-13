@@ -1,14 +1,14 @@
 import * as THREE from './vendor/three.module.js';
-import {buildCity} from './city.js?v=0.33';
-import {buildRealCity} from './real-city.js?v=0.33';
-import {nearestSegment,routeBetween} from './real-network.js?v=0.33';
-import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.33';
-import {createArcadeEffects} from './effects.js?v=0.33';
-import {actorFactory} from './actors.js?v=0.33';
-import {createStreetProps} from './art/street-props.js?v=0.33';
-import {createTouchDrive} from './touch-drive.js?v=0.33';
-import {drawNavigationMap} from './navigation-map.js?v=0.33';
-import {installGameHost} from './android-host.js?v=0.33';
+import {buildCity} from './city.js?v=0.34';
+import {buildRealCity} from './real-city.js?v=0.34';
+import {nearestSegment,routeBetween} from './real-network.js?v=0.34';
+import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.34';
+import {createArcadeEffects} from './effects.js?v=0.34';
+import {actorFactory} from './actors.js?v=0.34';
+import {createStreetProps} from './art/street-props.js?v=0.34';
+import {createTouchDrive} from './touch-drive.js?v=0.34';
+import {drawNavigationMap} from './navigation-map.js?v=0.34';
+import {installGameHost} from './android-host.js?v=0.34';
 
 const $ = (id) => document.getElementById(id);
 const isPilot=document.body.dataset.pilot==='true';
@@ -109,6 +109,7 @@ function makeCar(color,bus=false) {
   city.add(g); return g;
 }
 const cars=[],vehicleTemplates=new Map();
+const nearbyTraffic=realMode?cityWorld.starts.map(start=>cityWorld.network.segments.filter(s=>s.length>14&&Math.hypot((s.a.x+s.b.x)/2-start.x,(s.a.z+s.b.z)/2-start.z)>18&&Math.hypot((s.a.x+s.b.x)/2-start.x,(s.a.z+s.b.z)/2-start.z)<95)):[];
 for(let i=0;i<190;i++) {
   const axis=i<28?'z':i%2===0?'x':'z',lane=i<28?-100:roads[1+Math.floor(random()*(roads.length-2))];
   const dir=i%3===0?-1:1;
@@ -117,7 +118,7 @@ for(let i=0;i<190;i++) {
   if(vehicleTemplates.has(key)){mesh=vehicleTemplates.get(key).clone(true);city.add(mesh);}
   else{mesh=makeCar(color,bus);vehicleTemplates.set(key,mesh);if(bus)cityWorld.label('LÍNEA 20',0,2.6,-4.03,2,'#161b1c','#ffdd20',Math.PI,mesh);}
   const car={mesh,axis,lane,dir,pos:i<28?-170+i*18:random()*(limit*2-50)-limit+25,speed:parked?0:12+random()*12,near:false,bus,parked};
-  if(realMode){const seg=cityWorld.network.segments[(i*17)%cityWorld.network.segments.length];car.realState=createTraffic(cityWorld.network,seg.a,random);if(parked)car.realState.speed=0;}
+  if(realMode){const nearby=nearbyTraffic[i%3],seg=i<45&&nearby.length?nearby[Math.floor(i/3)%nearby.length]:cityWorld.network.segments[(i*17)%cityWorld.network.segments.length];const point=i<45?{x:(seg.a.x+seg.b.x)/2,z:(seg.a.z+seg.b.z)/2}:seg.a;car.realState=createTraffic(cityWorld.network,point,random);if(parked)car.realState.speed=0;}
   cars.push(car);
 }
 const vehicleGroups=new Map();
@@ -527,7 +528,7 @@ camera.position.set(...startZone().preview);camera.lookAt(...startZone().look);
 renderer.render(scene,camera);requestAnimationFrame(animate);
 if(isPilot){
   $('loading').innerHTML='<span class="loader"></span> Cargando';
-  import('./premium.js?v=0.33').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
+  import('./premium.js?v=0.34').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
     console.error('No se pudo cargar la zona piloto',error);
     $('loading').innerHTML='<div style="max-width:330px;line-height:1.8;text-align:center">No se pudieron cargar los modelos de la zona piloto. <br><button id="retry-assets" class="start-button">REINTENTAR ↗</button></div>';
     $('retry-assets').onclick=()=>window.location.reload();

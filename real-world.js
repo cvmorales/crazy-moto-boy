@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {mergeGeometries} from './vendor/addons/utils/BufferGeometryUtils.js';
-import {buildNetwork,project} from './real-network.js?v=0.33';
+import {buildNetwork,project,nearestSegment} from './real-network.js?v=0.34';
 
 // OSM positions are projected at approximately one world unit per metre.
 // Building heights are estimated only where the source has no height/levels.
@@ -21,7 +21,14 @@ export function createRealWorld(data){
     const points=b.node_ids.map(id=>network.nodes.get(id)).filter(Boolean);if(points.length<4)continue;
     const xs=points.map(p=>p.x),zs=points.map(p=>p.z),bounds={minX:Math.min(...xs),maxX:Math.max(...xs),minZ:Math.min(...zs),maxZ:Math.max(...zs)};
     const levels=parseFloat(b.levels),height=parseFloat(b.height);let h=Number.isFinite(height)?height:Number.isFinite(levels)?levels*3.2:11;if(!b.name&&Math.min(bounds.maxX-bounds.minX,bounds.maxZ-bounds.minZ)<5.5)h=Math.min(h,12);
-    buildings.push({name:b.name,osmId:b.osm_id,points,bounds,height:Math.max(3,Math.min(100,h)),heightEstimated:!Number.isFinite(height)&&!Number.isFinite(levels)});
+    // Some OSM footprints overlap a mapped road: never put a solid building
+    // over the centre of a street the player and traffic have to use.
+    const overlapsRoad=network.segments.some(s=>{
+      const margin=width(s)/2;if(Math.max(s.a.x,s.b.x)+margin<bounds.minX||Math.min(s.a.x,s.b.x)-margin>bounds.maxX||Math.max(s.a.z,s.b.z)+margin<bounds.minZ||Math.min(s.a.z,s.b.z)-margin>bounds.maxZ)return false;
+      const steps=Math.max(1,Math.ceil(s.length/2)),nx=-(s.b.z-s.a.z)/s.length,nz=(s.b.x-s.a.x)/s.length;
+      for(let i=0;i<=steps;i++){const t=i/steps;for(const offset of [-margin,0,margin])if(inside({x:s.a.x+(s.b.x-s.a.x)*t+nx*offset,z:s.a.z+(s.b.z-s.a.z)*t+nz*offset},points))return true;}return false;
+    });
+    if(!overlapsRoad)buildings.push({name:b.name,osmId:b.osm_id,points,bounds,height:Math.max(3,Math.min(100,h)),heightEstimated:!Number.isFinite(height)&&!Number.isFinite(levels)});
   }
   // Where OSM has no footprint, add clearly estimated infill alongside streets.
   // Every corner must clear mapped roads, water and surveyed building footprints.
@@ -41,6 +48,20 @@ export function createRealWorld(data){
     if(buildings.some(b=>x+8>=b.bounds.minX&&x-8<=b.bounds.maxX&&z+8>=b.bounds.minZ&&z-8<=b.bounds.maxZ))continue;
     const pts=[...corners,corners[0]],seed=Math.abs(Math.round(x*17+z*31)),h=9+(seed%8)*3;
     buildings.push({name:'',osmId:String(1000000000+generated),points:pts,bounds:{minX:x-6,maxX:x+6,minZ:z-6,maxZ:z+6},height:h,heightEstimated:true,infill:true});generated++;
+  }
+  // Carve small passages only from estimated buildings, never mapped landmarks.
+  // The two wings are the actual collision footprint, leaving the arcade open.
+  const galleries=[];
+  for(const target of [project(-31.41978,-64.18805),pastor]){
+    const candidates=buildings.filter(b=>b.infill).sort((a,b)=>Math.hypot((a.bounds.minX+a.bounds.maxX)/2-target.x,(a.bounds.minZ+a.bounds.maxZ)/2-target.z)-Math.hypot((b.bounds.minX+b.bounds.maxX)/2-target.x,(b.bounds.minZ+b.bounds.maxZ)/2-target.z));
+    for(const b of candidates){const x=(b.bounds.minX+b.bounds.maxX)/2,z=(b.bounds.minZ+b.bounds.maxZ)/2;if(galleries.some(g=>Math.hypot(g.x-x,g.z-z)<100))continue;
+      const snap=nearestSegment(network,{x,z});if(!snap||snap.distance>28)continue;const axis=Math.abs(snap.point.x-x)>Math.abs(snap.point.z-z)?'x':'z';
+      const otherBlocked=(px,pz)=>buildings.some(o=>o!==b&&px>=o.bounds.minX&&px<=o.bounds.maxX&&pz>=o.bounds.minZ&&pz<=o.bounds.maxZ&&inside({x:px,z:pz},o.points));
+      let clear=true;for(let t=0;t<=1;t+=.1)if(otherBlocked(x+(snap.point.x-x)*t,z+(snap.point.z-z)*t)){clear=false;break;}if(!clear)continue;
+      const wing=(minX,maxX,minZ,maxZ,n)=>{const pts=[{x:minX,z:minZ},{x:maxX,z:minZ},{x:maxX,z:maxZ},{x:minX,z:maxZ},{x:minX,z:minZ}];return {...b,osmId:String(Number(b.osmId)+n),points:pts,bounds:{minX,maxX,minZ,maxZ},galleryWing:true};};
+      buildings.splice(buildings.indexOf(b),1);if(axis==='x')buildings.push(wing(x-6,x+6,z-6,z-3.2,1),wing(x-6,x+6,z+3.2,z+6,2));else buildings.push(wing(x-6,x-3.2,z-6,z+6,1),wing(x+3.2,x+6,z-6,z+6,2));
+      galleries.push({x,z,axis,name:galleries.length?'GALERÍA NUEVA CÓRDOBA':'GALERÍA DEL CENTRO'});break;
+    }
   }
   const bridges=network.segments.filter(s=>s.bridge==='yes');
   // Only test nearby footprints on every movement frame.
@@ -88,13 +109,16 @@ export function createRealWorld(data){
 
     // Pavement is drawn alongside mapped road segments. Segments are shortened
     // at their ends so the raised edges do not cross the actual intersections.
-    const sidewalks=[];
-    for(const seg of network.segments){if(seg.length<18||seg.tunnel==='yes')continue;const dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length,off=width(seg)/2+1.3;
-      for(const side of [-1,1]){const a={x:seg.a.x+dx*6-side*dz*off,z:seg.a.z+dz*6+side*dx*off},b={x:seg.b.x-dx*6-side*dz*off,z:seg.b.z-dz*6+side*dx*off};
-        if(blocked(a.x,a.z)||blocked(b.x,b.z)||blocked((a.x+b.x)/2,(a.z+b.z)/2))continue;
-        sidewalks.push({a,b});}
+    const sidewalks=[],curbs=[];
+    for(const seg of network.segments){if(seg.length<10||seg.tunnel==='yes')continue;const dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length,off=width(seg)/2+1.6;
+      for(const side of [-1,1])for(let d=3;d<seg.length-3;d+=5){const end=Math.min(d+5,seg.length-3),a={x:seg.a.x+dx*d-side*dz*off,z:seg.a.z+dz*d+side*dx*off},b={x:seg.a.x+dx*end-side*dz*off,z:seg.a.z+dz*end+side*dx*off},mid={x:(a.x+b.x)/2,z:(a.z+b.z)/2};
+        if(blocked(a.x,a.z)||blocked(b.x,b.z)||blocked(mid.x,mid.z))continue;
+        if(network.segments.some(other=>other!==seg&&Math.abs((other.a.x+other.b.x)/2-mid.x)<other.length/2+12&&Math.abs((other.a.z+other.b.z)/2-mid.z)<other.length/2+12&&distance(mid,other.a,other.b)<width(other)/2+1))continue;
+        sidewalks.push({a,b});curbs.push({a:{x:a.x+side*dz*1.48,z:a.z-side*dx*1.48},b:{x:b.x+side*dz*1.48,z:b.z-side*dx*1.48}});}
     }
-    roadMesh(sidewalks,'#c3b9a8',.055,()=>2.5).name='Veredas_Reales';
+    const sidewalk=roadMesh(sidewalks,'#d0c6b5',.055,()=>3.1);sidewalk.name='Veredas_Reales';
+    if(typeof document!=='undefined'){const c=document.createElement('canvas');c.width=c.height=256;const ctx=c.getContext('2d');ctx.fillStyle='#dfd9cc';ctx.fillRect(0,0,256,256);ctx.fillStyle='#a9a69f';for(let i=0;i<256;i+=16){ctx.fillRect(i,0,1,256);ctx.fillRect(0,i,256,1);}const tiles=new THREE.CanvasTexture(c);tiles.wrapS=tiles.wrapT=THREE.RepeatWrapping;tiles.colorSpace=THREE.SRGBColorSpace;sidewalk.material.map=tiles;sidewalk.material.needsUpdate=true;}
+    roadMesh(curbs,'#f1eadb',.075,()=>.16).name='Cordones_De_Vereda';
     // Segmented centre lines keep the streets legible without blocking crossings.
     const markings=[];
     for(const seg of network.segments){if(seg.length<25||seg.tunnel==='yes')continue;const dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length;
@@ -130,5 +154,5 @@ export function createRealWorld(data){
     posts.forEach((p,i)=>{dummy.position.set(p.x,3,p.z);dummy.updateMatrix();poles.setMatrixAt(i,dummy.matrix);dummy.position.y=6;dummy.updateMatrix();bulbs.setMatrixAt(i,dummy.matrix);lamps.push({x:p.x,y:6,z:p.z});});root.add(poles,bulbs);root.userData.streetLamps=lamps;
     return root;
   }
-  return {network,buildings,bridges,blocked,createScene};
+  return {network,buildings,bridges,galleries,blocked,createScene};
 }
