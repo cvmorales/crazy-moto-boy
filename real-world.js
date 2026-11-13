@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {mergeGeometries} from './vendor/addons/utils/BufferGeometryUtils.js';
-import {buildNetwork,project,nearestSegment} from './real-network.js?v=0.35';
+import {buildNetwork,project,nearestSegment} from './real-network.js?v=0.36';
 
 // OSM positions are projected at approximately one world unit per metre.
 // Building heights are estimated only where the source has no height/levels.
@@ -66,7 +66,8 @@ export function createRealWorld(data){
   const bridges=network.segments.filter(s=>s.bridge==='yes');
   // Only test nearby footprints on every movement frame.
   const cellSize=50,buildingGrid=new Map();
-  for(const building of buildings){const b=building.bounds;for(let x=Math.floor(b.minX/cellSize);x<=Math.floor(b.maxX/cellSize);x++)for(let z=Math.floor(b.minZ/cellSize);z<=Math.floor(b.maxZ/cellSize);z++){const key=x+':'+z;if(!buildingGrid.has(key))buildingGrid.set(key,[]);buildingGrid.get(key).push(building);}}
+  function registerFootprint(building){const b=building.bounds;for(let x=Math.floor(b.minX/cellSize);x<=Math.floor(b.maxX/cellSize);x++)for(let z=Math.floor(b.minZ/cellSize);z<=Math.floor(b.maxZ/cellSize);z++){const key=x+':'+z;if(!buildingGrid.has(key))buildingGrid.set(key,[]);buildingGrid.get(key).push(building);}}
+  for(const building of buildings)registerFootprint(building);
   function blocked(x,z){
     if(x<nw.x||x>se.x||z<nw.z||z>se.z)return true;
     const p={x,z};
@@ -77,16 +78,52 @@ export function createRealWorld(data){
   }
   // Fill some genuinely open gaps with walk-through, roofed shopping passages.
   // Their entire footprint must clear the buildings, water and road carriageway.
-  for(const target of [project(-31.41978,-64.18805),project(-31.4218,-64.1891),pastor,project(-31.4260,-64.1860),plaza]){
+  function addPassages(targets){
+  for(const target of targets){
     const options=network.segments.filter(s=>s.length>=24&&s.tunnel!=='yes'&&s.bridge!=='yes').sort((a,b)=>Math.hypot((a.a.x+a.b.x)/2-target.x,(a.a.z+a.b.z)/2-target.z)-Math.hypot((b.a.x+b.b.x)/2-target.x,(b.a.z+b.b.z)/2-target.z));
     let chosen=null;
     for(const s of options){if(Math.hypot((s.a.x+s.b.x)/2-target.x,(s.a.z+s.b.z)/2-target.z)>260)break;const dx=(s.b.x-s.a.x)/s.length,dz=(s.b.z-s.a.z)/s.length;
       for(const side of [-1,1]){const offset=width(s)/2+8,x=(s.a.x+s.b.x)/2-side*dz*offset,z=(s.a.z+s.b.z)/2+side*dx*offset;
         if(galleries.some(g=>Math.hypot(g.x-x,g.z-z)<60))continue;let clear=true;
         for(let along=-12;along<=12&&clear;along+=3)for(const across of [-3,0,3]){const px=x+dx*along-dz*across,pz=z+dz*along+dx*across,snap=nearestSegment(network,{x:px,z:pz});if(blocked(px,pz)||snap.distance<width(snap.segment)/2+1){clear=false;break;}}
-        if(clear){chosen={x,z,axis:'path',dx,dz,length:24,name:'PASEO COMERCIAL'};break;}
+        if(clear){chosen={x,z,axis:'path',dx,dz,length:24,name:['GALERÍA DE LOS TOLDOS','PASEO DEL CAFÉ','GALERÍA DE LA ESQUINA','PASEO DE LAS TIENDAS'][galleries.length%4]};break;}
       }if(chosen)break;
     }if(chosen)galleries.push(chosen);
+  }
+  }
+  addPassages([project(-31.41978,-64.18805),project(-31.4218,-64.1891),pastor,project(-31.4260,-64.1860),plaza]);
+
+  // Continuous commercial fronts aligned to the sidewalk. Their shallow floor
+  // plans sit entirely behind the curb, with the same footprint for collisions.
+  const commercialRows=[];
+  function populateCommerce(starts){
+    addPassages(starts);
+    const anchors=[...starts,project(-31.41978,-64.18805),pastor,plaza];
+    const segments=network.segments.filter(s=>s.length>16&&s.tunnel!=='yes'&&s.bridge!=='yes');
+    const point=(s,t)=>({x:s.a.x+(s.b.x-s.a.x)*t,z:s.a.z+(s.b.z-s.a.z)*t});
+    function addRow(s,side,t){
+      const mid=point(s,t),dx=(s.b.x-s.a.x)/s.length,dz=(s.b.z-s.a.z)/s.length,nx=-dz*side,nz=dx*side;
+      const length=s.length>27?15.3:10.2,depth=4.7,offset=width(s)/2+3.7;
+      if(Math.hypot(mid.x-pastor.x,mid.z-pastor.z)<42||Math.hypot(mid.x-plaza.x,mid.z-plaza.z)<55)return false;
+      const x=mid.x+nx*offset,z=mid.z+nz*offset;
+      if(galleries.some(g=>Math.hypot(g.x-x,g.z-z)<(g.length||12)/2+9))return false;
+      const at=(a,b)=>({x:x+dx*a+nx*b,z:z+dz*a+nz*b});
+      for(let i=0;i<=6;i++)for(const d of [-2,0,depth/2,depth]){
+        const p=at(length*(i/6-.5),d),snap=nearestSegment(network,p);
+        if(blocked(p.x,p.z)||snap.distance<width(snap.segment)/2+1.1||greenPolygons.some(poly=>inside(p,poly))||network.water.some(w=>distance(p,w.a,w.b)<10))return false;
+      }
+      const points=[at(-length/2,0),at(length/2,0),at(length/2,depth),at(-length/2,depth)];points.push(points[0]);
+      const xs=points.map(p=>p.x),zs=points.map(p=>p.z),bounds={minX:Math.min(...xs),maxX:Math.max(...xs),minZ:Math.min(...zs),maxZ:Math.max(...zs)};
+      registerFootprint({points,bounds});commercialRows.push({x,z,dx,dz,nx,nz,length,depth,side});return true;
+    }
+    for(const anchor of anchors){let count=0;
+      for(const s of [...segments].sort((a,b)=>{const p=point(a,.5),q=point(b,.5);return Math.hypot(p.x-anchor.x,p.z-anchor.z)-Math.hypot(q.x-anchor.x,q.z-anchor.z);})){
+        const p=point(s,.5);if(Math.hypot(p.x-anchor.x,p.z-anchor.z)>140||count>=13)break;
+        for(const side of [-1,1])if(addRow(s,side,.5))count++;
+      }
+    }
+    // Continue the rhythm between landmarks without filling every open lot.
+    for(let i=0;i<segments.length&&commercialRows.length<135;i+=3)for(const side of [-1,1])addRow(segments[i],side,.5);
   }
   function createScene(){
     const root=new THREE.Group();root.name='Cordoba_OSM_escala_metros';
@@ -122,16 +159,26 @@ export function createRealWorld(data){
 
     // Pavement is drawn alongside mapped road segments. Segments are shortened
     // at their ends so the raised edges do not cross the actual intersections.
-    const sidewalks=[],curbs=[];
+    const sidewalks=[],curbs=[],drains=[],tactile=[];
     for(const seg of network.segments){if(seg.length<10||seg.tunnel==='yes')continue;const dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length,off=width(seg)/2+1.6;
       for(const side of [-1,1])for(let d=3;d<seg.length-3;d+=5){const end=Math.min(d+5,seg.length-3),a={x:seg.a.x+dx*d-side*dz*off,z:seg.a.z+dz*d+side*dx*off},b={x:seg.a.x+dx*end-side*dz*off,z:seg.a.z+dz*end+side*dx*off},mid={x:(a.x+b.x)/2,z:(a.z+b.z)/2};
         if(blocked(a.x,a.z)||blocked(b.x,b.z)||blocked(mid.x,mid.z))continue;
         if(network.segments.some(other=>other!==seg&&Math.abs((other.a.x+other.b.x)/2-mid.x)<other.length/2+12&&Math.abs((other.a.z+other.b.z)/2-mid.z)<other.length/2+12&&distance(mid,other.a,other.b)<width(other)/2+1))continue;
-        sidewalks.push({a,b});curbs.push({a:{x:a.x+side*dz*1.48,z:a.z-side*dx*1.48},b:{x:b.x+side*dz*1.48,z:b.z-side*dx*1.48}});}
+        sidewalks.push({a,b});curbs.push({a:{x:a.x+side*dz*1.48,z:a.z-side*dx*1.48},b:{x:b.x+side*dz*1.48,z:b.z-side*dx*1.48}});
+        if((d-3)%20===0&&end-d>1)drains.push({a:{x:a.x+side*dz*1.28,z:a.z-side*dx*1.28},b:{x:a.x+side*dz*1.28+dx*.64,z:a.z-side*dx*1.28+dz*.64}});
+        if((d===3||end===seg.length-3)&&end-d>1.2)tactile.push({a,b:{x:a.x+dx*.65,z:a.z+dz*.65}});
+      }
     }
-    const sidewalk=roadMesh(sidewalks,'#d0c6b5',.055,()=>3.1);sidewalk.name='Veredas_Reales';
-    if(typeof document!=='undefined'){const c=document.createElement('canvas');c.width=c.height=256;const ctx=c.getContext('2d');ctx.fillStyle='#dfd9cc';ctx.fillRect(0,0,256,256);ctx.fillStyle='#a9a69f';for(let i=0;i<256;i+=16){ctx.fillRect(i,0,1,256);ctx.fillRect(0,i,256,1);}const tiles=new THREE.CanvasTexture(c);tiles.wrapS=tiles.wrapT=THREE.RepeatWrapping;tiles.colorSpace=THREE.SRGBColorSpace;sidewalk.material.map=tiles;sidewalk.material.needsUpdate=true;}
-    roadMesh(curbs,'#f1eadb',.075,()=>.16).name='Cordones_De_Vereda';
+    const sidewalk=roadMesh(sidewalks,'#d0c6b5',.055,()=>3.1);sidewalk.name='Veredas_Reales';sidewalk.receiveShadow=true;
+    if(typeof document!=='undefined'){
+      const c=document.createElement('canvas');c.width=c.height=256;const ctx=c.getContext('2d');
+      for(let y=0;y<256;y+=8)for(let x=0;x<256;x+=8){ctx.fillStyle=['#b1aca0','#c4bdb0','#cec8b9','#beb9ad','#d3cbbc'][(x*3+y*7+x*y/64)%5];ctx.fillRect(x,y,8,8);ctx.fillStyle='#918b81';ctx.fillRect(x,y,8,1);ctx.fillRect(x,y,1,8);ctx.fillStyle='rgba(255,255,255,.19)';ctx.fillRect(x+1,y+1,7,1);}
+      const tiles=new THREE.CanvasTexture(c);tiles.wrapS=tiles.wrapT=THREE.RepeatWrapping;tiles.colorSpace=THREE.SRGBColorSpace;sidewalk.material.map=tiles;sidewalk.material.bumpMap=tiles;sidewalk.material.bumpScale=.034;
+    }
+    const curbGeo=new THREE.BoxGeometry(1,1,1),curb=new THREE.InstancedMesh(curbGeo,new THREE.MeshStandardMaterial({color:'#d7cfc0',roughness:.94}),curbs.length),curbDummy=new THREE.Object3D();curb.name='Cordones_De_Vereda';
+    curbs.forEach(({a,b},i)=>{curbDummy.position.set((a.x+b.x)/2,.029,(a.z+b.z)/2);curbDummy.rotation.y=Math.atan2(b.x-a.x,b.z-a.z);curbDummy.scale.set(.23,.11,Math.hypot(b.x-a.x,b.z-a.z));curbDummy.updateMatrix();curb.setMatrixAt(i,curbDummy.matrix);});root.add(curb);
+    roadMesh(drains,'#41494a',.064,()=>.34).name='Desagues_De_Vereda';
+    roadMesh(tactile,'#c6a350',.063,()=>1.35).name='Baldosas_De_Esquina';
     // Segmented centre lines keep the streets legible without blocking crossings.
     const markings=[];
     for(const seg of network.segments){if(seg.length<25||seg.tunnel==='yes')continue;const dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length;
@@ -167,5 +214,5 @@ export function createRealWorld(data){
     posts.forEach((p,i)=>{dummy.position.set(p.x,3,p.z);dummy.updateMatrix();poles.setMatrixAt(i,dummy.matrix);dummy.position.y=6;dummy.updateMatrix();bulbs.setMatrixAt(i,dummy.matrix);lamps.push({x:p.x,y:6,z:p.z});});root.add(poles,bulbs);root.userData.streetLamps=lamps;
     return root;
   }
-  return {network,buildings,bridges,galleries,blocked,createScene};
+  return {network,buildings,bridges,galleries,commercialRows,populateCommerce,blocked,createScene};
 }

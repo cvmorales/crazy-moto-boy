@@ -2,11 +2,11 @@ import * as THREE from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/addons/loaders/GLTFLoader.js';
 import {HDRLoader} from './vendor/addons/loaders/HDRLoader.js';
 import {clone as cloneRig} from './vendor/addons/utils/SkeletonUtils.js';
-import {poseCourierDriver} from './art/courier-pose.js?v=0.35';
+import {poseCourierDriver} from './art/courier-pose.js?v=0.36';
 import {Sky} from './vendor/addons/Sky.js';
-import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.35';
-import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.35';
-import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.35';
+import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.36';
+import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.36';
+import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.36';
 
 export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState}) {
   const gltf=new GLTFLoader(),textures=new THREE.TextureLoader();

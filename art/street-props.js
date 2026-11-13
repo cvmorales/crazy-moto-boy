@@ -110,10 +110,18 @@ export function createStreetProps({THREE,scene,world}){
     for(const shop of world.restaurants){if(!shop.mesh.parent)continue;const x=shop.mesh.position.x,z=shop.mesh.position.z;
       for(const [type,dx,dz] of [['mesa',4,0],['silla',3,-1.4],['silla',5,1.4],['parasol',4,0],['cartel',-3,0]])if(!world.realWorld.blocked(x+dx,z+dz))make(type,x+dx,z+dz);
     }
+    for(const [i,row] of world.realWorld.commercialRows.entries()){
+      const position=(a,b)=>[row.x+row.dx*a-row.nx*b,row.z+row.dz*a-row.nz*b];
+      for(const [type,a,b] of (i%5===0?[['mesa',-2.7,1.1],['silla',-4.3,1.1],['cartel',2.8,1.15]]:[[['flores','ropa','revistas','banco'][i%4],-2.55,1.02]])){
+        const [x,z]=position(a,b);if(world.realWorld.blocked(x,z)||props.some(p=>Math.hypot(p.x-x,p.z-z)<1.65))continue;
+        make(type,x,z,-Math.atan2(row.dz,row.dx));
+      }
+    }
     for(const gallery of world.galleries||[])for(let along=-(gallery.length||12)/2+2;along<(gallery.length||12)/2;along+=4)for(const side of [-1,1]){
       const dx=gallery.axis==='path'?gallery.dx:gallery.axis==='x'?1:0,dz=gallery.axis==='path'?gallery.dz:gallery.axis==='x'?0:1;
       const x=gallery.x+dx*along-dz*side*2.3,z=gallery.z+dz*along+dx*side*2.3;
-      if(!world.realWorld.blocked(x,z)){const prop=make(side<0?'ropa':'revistas',x,z,gallery.axis==='x'?0:Math.PI/2);prop.gallery=gallery.name;}
+      const type=['ropa','revistas','flores','perchero','cartel','carrito'][Math.round((along+(gallery.length||12)/2-2)/4+ (side>0?2:0))%6];
+      if(!world.realWorld.blocked(x,z)){const prop=make(type,x,z,-Math.atan2(dz,dx));prop.gallery=gallery.name;}
     }
   }else{
   world.restaurants.forEach(s=>cafe(...s.pickup));

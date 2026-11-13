@@ -1,10 +1,10 @@
-import {realMapData} from './real-map-data.js?v=0.35';
-import {createRealWorld} from './real-world.js?v=0.35';
-import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.35';
-import {actorFactory} from './actors.js?v=0.35';
-import {addRealLandmarks} from './art/real-landmarks.js?v=0.35';
-import {addRealStreetLife} from './art/real-street-life.js?v=0.35';
-import {addRealFacades} from './art/real-facades.js?v=0.35';
+import {realMapData} from './real-map-data.js?v=0.36';
+import {createRealWorld} from './real-world.js?v=0.36';
+import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.36';
+import {actorFactory} from './actors.js?v=0.36';
+import {addRealLandmarks} from './art/real-landmarks.js?v=0.36';
+import {addRealStreetLife} from './art/real-street-life.js?v=0.36';
+import {addRealFacades} from './art/real-facades.js?v=0.36';
 
 // Construct gameplay objects on a connected part of the real street graph.
 export function buildRealCity({THREE,scene,material,random}){
@@ -54,10 +54,15 @@ export function buildRealCity({THREE,scene,material,random}){
   if(startCandidates.length<3)throw new Error('No hay suficientes inicios transitables');
   startCandidates.sort((a,b)=>a.z-b.z);
   const starts=[0,1,2].map(i=>startCandidates[Math.floor((i+.5)*startCandidates.length/3)]);
+  real.populateCommerce(starts);
 
   // Populate the streets the player actually sees, not just distant nodes.
   for(const start of starts)for(const seg of network.segments){if(seg.length<16)continue;const dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length;
     for(const side of [-1,1]){const x=(seg.a.x+seg.b.x)/2-side*dz*7,z=(seg.a.z+seg.b.z)/2+side*dx*7,d=Math.hypot(x-start.x,z-start.z);if(d<14||d>65||real.blocked(x,z))continue;if(people.some(p=>Math.hypot(p.mesh.position.x-x,p.mesh.position.z-z)<5))continue;const p=person(x,z);p.baseX=x;p.walkDx=dx;p.walkDz=dz;}
+  }
+  for(const row of real.commercialRows){if(!starts.some(s=>Math.hypot(s.x-row.x,s.z-row.z)<115))continue;
+    const x=row.x-row.nx*1.4,z=row.z-row.nz*1.4;if(real.blocked(x,z)||people.some(p=>Math.hypot(p.mesh.position.x-x,p.mesh.position.z-z)<4))continue;
+    const p=person(x,z);p.baseX=x;p.walkDx=row.dx;p.walkDz=row.dz;
   }
   const actorGroups=new Map();
   for(const p of people)p.mesh.traverse(m=>{if(!m.isMesh)return;const key=m.geometry.uuid+':'+m.material.uuid;if(!actorGroups.has(key))actorGroups.set(key,[]);actorGroups.get(key).push({mesh:m,root:p.mesh});m.visible=false;});
