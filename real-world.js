@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {mergeGeometries} from './vendor/addons/utils/BufferGeometryUtils.js';
-import {buildNetwork,project,nearestSegment,nearbySegments} from './real-network.js?v=0.40';
+import {buildNetwork,project,nearestSegment,nearbySegments} from './real-network.js?v=0.41';
 
 // OSM positions are projected at approximately one world unit per metre.
 // Building heights are estimated only where the source has no height/levels.

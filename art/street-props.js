@@ -1,5 +1,5 @@
-import {nearestSegment} from '../real-network.js?v=0.40';
-import {offRoad,sidewalkTop,width} from '../real-world.js?v=0.40';
+import {nearestSegment} from '../real-network.js?v=0.41';
+import {offRoad,sidewalkTop,width} from '../real-world.js?v=0.41';
 
 // Shared, instanced street furniture. Objects keep independent destruction state.
 export function createStreetProps({THREE,scene,world}){

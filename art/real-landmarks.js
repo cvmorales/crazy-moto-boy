@@ -1,7 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
-import {createCordobaArchitecture} from './cordoba-architecture.js?v=0.40';
-import {nearestSegment,project} from '../real-network.js?v=0.40';
-import {offRoad} from '../real-world.js?v=0.40';
+import {createCordobaArchitecture} from './cordoba-architecture.js?v=0.41';
+import {nearestSegment,project} from '../real-network.js?v=0.41';
+import {offRoad} from '../real-world.js?v=0.41';
 
 // Original landmark interpretations fitted into the mapped Córdoba district.
 export function addRealLandmarks(root,world,maps={}){
@@ -25,7 +25,8 @@ export function addRealLandmarks(root,world,maps={}){
       const a=patio.points[i-1],b=patio.points[i],dx=b.x-a.x,dz=b.z-a.z,length=Math.hypot(dx,dz);if(length<3.2)continue;
       const face=new THREE.Group();face.position.set((a.x+b.x)/2,0,(a.z+b.z)/2);face.rotation.y=-Math.atan2(dz,dx);g.add(face);
       const street=nearestSegment(world.network,face.position);
-      const entrance=length>18&&street.distance<20&&/Vélez Sarsfield|San Juan/.test(street.segment.name);
+      const cornerFront=face.position.x<0&&face.position.z>24&&length>=5&&street.distance<19;
+      const entrance=cornerFront||(length>18&&street.distance<20&&/Vélez Sarsfield|San Juan/.test(street.segment.name));
       const normalX=-dz/length,normalZ=dx/length;
       const frontSide=(street.point.x-face.position.x)*normalX+(street.point.z-face.position.z)*normalZ>0?1:-1;
       for(const side of [-1,1]){
@@ -43,6 +44,21 @@ export function addRealLandmarks(root,world,maps={}){
         const s=frontSide;
         const portal=new THREE.Group();portal.name='Portico_Patio_Olmos';face.add(portal);
         if(s<0)portal.rotation.y=Math.PI;
+        portal.scale.x=Math.min(1,(length-.25)/10.7);
+        box(portal,10.6,.43,.58,0,11.9,.23,cream);
+        box(portal,10.6,1.24,.30,0,12.9,.06,stone);
+        box(portal,10.7,.16,.47,0,13.57,.11,cream);
+        box(portal,10.7,.17,.36,0,8.13,.18,brass);
+        for(const x of [-4.7,4.7]){
+          box(portal,.75,7.06,.57,x,8.36,.29,cream);
+          box(portal,1.0,.29,.63,x,11.83,.32,stone);
+        }
+        for(const x of [-2.6,0,2.6]){
+          box(portal,1.85,2.63,.15,x,9.87,.20,stone);
+          box(portal,1.58,2.26,.13,x,9.87,.29,glass);
+          box(portal,.065,2.28,.07,x,9.86,.37,brass);
+          box(portal,2.02,.13,.31,x,8.68,.28,cream);
+        }
         box(portal,10.2,5.4,.18,0,2.98,.24,stone);
         box(portal,8.65,4.32,.21,0,2.5,.36,entryGlass);
         for(const x of [-4.65,4.65]){
@@ -53,12 +69,12 @@ export function addRealLandmarks(root,world,maps={}){
           box(portal,.055,4.04,.09,x,2.48,.49,brass);
         }
         for(const x of [-3.18,-2.94,2.94,3.18])box(portal,.045,.48,.10,x,1.32,.56,brass);
-        box(portal,10.4,.28,1.38,0,4.92,.72,brass);
-        box(portal,8.8,.055,.15,0,4.74,1.27,glow);
+        box(portal,10.4,.32,1.70,0,4.92,.77,brass);
+        box(portal,9.8,.11,.11,0,4.91,1.64,glow);
         box(portal,10.1,.21,1.4,0,.14,.66,stone);
         if(signMaterial){
-          const label=new THREE.Mesh(new THREE.PlaneGeometry(9.2,2.3),signMaterial);
-          label.position.set(0,6.36,.45);portal.add(label);
+          const label=new THREE.Mesh(new THREE.PlaneGeometry(9.5,2.38),signMaterial);
+          label.position.set(0,6.36,.62);portal.add(label);
         }
         for(const x of [-8.45,8.45]){
           const corner=portal.localToWorld(new THREE.Vector3(x,0,.85));
@@ -82,12 +98,19 @@ export function addRealLandmarks(root,world,maps={}){
         const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,h,24),mat);
         mesh.position.y=y;court.add(mesh);
       };
-      stoneCircle(3.55,.13,.015,cream);stoneCircle(2.35,.53,.33,stone);
-      stoneCircle(2.05,.1,.61,water);stoneCircle(.45,.55,.87,cream);
-      box(court,.055,1.18,.055,0,1.6,0,water);
-      for(const x of [-.65,.65]){
-        const jet=box(court,.037,.75,.036,x,1.11,0,water);jet.rotation.z=-x*.62;
+      stoneCircle(3.7,.13,.015,cream);stoneCircle(2.68,.54,.33,stone);
+      stoneCircle(2.39,.08,.61,water);stoneCircle(.69,.85,1.01,cream);
+      stoneCircle(1.10,.15,1.43,stone);stoneCircle(.96,.04,1.53,water);
+      const spray=new THREE.MeshBasicMaterial({color:'#bce8ec'});
+      for(let i=0;i<8;i++){
+        const angle=i*Math.PI/4,points=[];
+        for(let j=0;j<=8;j++){
+          const t=j/8,r=.35+1.58*t;
+          points.push(new THREE.Vector3(Math.cos(angle)*r,1.53-.91*t+Math.sin(Math.PI*t)*.69,Math.sin(angle)*r));
+        }
+        court.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),8,.027,4,false),spray));
       }
+      box(court,.048,1.08,.048,0,2.04,0,spray);
       for(const z of [-3.02,3.02]){
         box(court,2.1,.11,.52,0,.48,z,brass);
         for(const x of [-.77,.77])box(court,.13,.45,.38,x,.23,z,stone);

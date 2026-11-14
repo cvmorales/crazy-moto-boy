@@ -1,11 +1,11 @@
-import {realMapData} from './real-map-data.js?v=0.40';
-import {createRealWorld,offRoad,sidewalkTop,width} from './real-world.js?v=0.40';
-import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.40';
-import {actorFactory} from './actors.js?v=0.40';
-import {addRealLandmarks} from './art/real-landmarks.js?v=0.40';
-import {addRealStreetLife} from './art/real-street-life.js?v=0.40';
-import {addRealFacades} from './art/real-facades.js?v=0.40';
-import {addBuildingFronts} from './art/building-fronts.js?v=0.40';
+import {realMapData} from './real-map-data.js?v=0.41';
+import {createRealWorld,offRoad,sidewalkTop,width} from './real-world.js?v=0.41';
+import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.41';
+import {actorFactory} from './actors.js?v=0.41';
+import {addRealLandmarks} from './art/real-landmarks.js?v=0.41';
+import {addRealStreetLife} from './art/real-street-life.js?v=0.41';
+import {addRealFacades} from './art/real-facades.js?v=0.41';
+import {addBuildingFronts} from './art/building-fronts.js?v=0.41';
 
 // Construct gameplay objects on a connected part of the real street graph.
 export function buildRealCity({THREE,scene,material,random}){

@@ -1,14 +1,14 @@
 import * as THREE from './vendor/three.module.js';
-import {buildCity} from './city.js?v=0.40';
-import {buildRealCity} from './real-city.js?v=0.40';
-import {nearestSegment,routeBetween} from './real-network.js?v=0.40';
-import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.40';
-import {createArcadeEffects} from './effects.js?v=0.40';
-import {actorFactory} from './actors.js?v=0.40';
-import {createStreetProps} from './art/street-props.js?v=0.40';
-import {createTouchDrive} from './touch-drive.js?v=0.40';
-import {drawNavigationMap} from './navigation-map.js?v=0.40';
-import {installGameHost} from './android-host.js?v=0.40';
+import {buildCity} from './city.js?v=0.41';
+import {buildRealCity} from './real-city.js?v=0.41';
+import {nearestSegment,routeBetween} from './real-network.js?v=0.41';
+import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.41';
+import {createArcadeEffects} from './effects.js?v=0.41';
+import {actorFactory} from './actors.js?v=0.41';
+import {createStreetProps} from './art/street-props.js?v=0.41';
+import {createTouchDrive} from './touch-drive.js?v=0.41';
+import {drawNavigationMap} from './navigation-map.js?v=0.41';
+import {installGameHost} from './android-host.js?v=0.41';
 
 const $ = (id) => document.getElementById(id);
 const isPilot=document.body.dataset.pilot==='true';
@@ -243,8 +243,11 @@ function hideModal() {$('overlay').classList.add('hidden');}
 const arcadeStartZones={guemes:{x:-100,z:190,angle:0,look:[-100,4,100],preview:[-100,22,225]},centro:{x:50,z:-98,angle:-Math.PI/2,look:[50,15,-150],preview:[0,35,-100]},nueva:{x:150,z:102,angle:Math.PI/2,look:[150,19,150],preview:[100,35,200]}};
 const startZones=realMode?{guemes:cityWorld.starts[0],centro:cityWorld.starts[1],nueva:cityWorld.starts[2]}:arcadeStartZones;
 const randomStart=()=>Object.keys(startZones)[Math.floor(Math.random()*3)];
+const patioStart=realMode&&viewOptions.get('start')==='patio-olmos'
+  ? {x:-32,z:45,angle:Math.atan2(-20,13),look:[-14,4,32],preview:[-51,12,57]}
+  : null;
 let selectedStart=isPilot?randomStart():'guemes';
-const startZone=()=>startZones[selectedStart];
+const startZone=()=>patioStart??startZones[selectedStart];
 function startGame() {
   touchDrive.cancelAll();touchSteering=0;
   Object.assign(state,{mode:'delivery',phase:'playing',time:180,cash:0,completed:0,speed:0,angle:0,boost:100,x:-100,z:190,hit:1,combo:0,comboTime:0,smashed:0,stage:'pickup',jobIndex:0,stopTime:0,elapsed:0});
@@ -541,7 +544,7 @@ camera.position.set(...startZone().preview);camera.lookAt(...startZone().look);
 renderer.render(scene,camera);requestAnimationFrame(animate);
 if(isPilot){
   $('loading').innerHTML='<span class="loader"></span> Cargando';
-  import('./premium.js?v=0.40').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state,mobile:mobileDrive})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
+  import('./premium.js?v=0.41').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state,mobile:mobileDrive})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
     console.error('No se pudo cargar la zona piloto',error);
     $('loading').innerHTML='<div style="max-width:330px;line-height:1.8;text-align:center">No se pudieron cargar los modelos de la zona piloto. <br><button id="retry-assets" class="start-button">REINTENTAR ↗</button></div>';
     $('retry-assets').onclick=()=>window.location.reload();
