@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {mergeGeometries} from './vendor/addons/utils/BufferGeometryUtils.js';
-import {buildNetwork,project,nearestSegment,nearbySegments} from './real-network.js?v=0.41';
+import {buildNetwork,project,nearestSegment,nearbySegments} from './real-network.js?v=0.42';
 
 // OSM positions are projected at approximately one world unit per metre.
 // Building heights are estimated only where the source has no height/levels.
@@ -295,7 +295,7 @@ export function createRealWorld(data){
     const palette=['#d8b789','#b98570','#dcd3bc','#d6a88f','#b9bdab','#d8c299'];
     const groups=palette.map(()=>[]),roofs=[];
     for(const b of buildings){
-      if(b.osmId==='1126847036'||b.osmId==='1356799523')continue;
+      if(b.osmId==='1126847036'||b.osmId==='1356799523'||b.osmId==='1149552632')continue;
       const points=b.points.slice(0,-1);if(points.length<3)continue;const shape=new THREE.Shape();shape.moveTo(points[0].x,-points[0].z);for(const p of points.slice(1))shape.lineTo(p.x,-p.z);shape.closePath();
       const geometry=new THREE.ExtrudeGeometry(shape,{depth:b.height,bevelEnabled:false,steps:1});geometry.rotateX(-Math.PI/2);
       const non=geometry.index?geometry.toNonIndexed():geometry;

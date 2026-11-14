@@ -1,11 +1,11 @@
-import {realMapData} from './real-map-data.js?v=0.41';
-import {createRealWorld,offRoad,sidewalkTop,width} from './real-world.js?v=0.41';
-import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.41';
-import {actorFactory} from './actors.js?v=0.41';
-import {addRealLandmarks} from './art/real-landmarks.js?v=0.41';
-import {addRealStreetLife} from './art/real-street-life.js?v=0.41';
-import {addRealFacades} from './art/real-facades.js?v=0.41';
-import {addBuildingFronts} from './art/building-fronts.js?v=0.41';
+import {realMapData} from './real-map-data.js?v=0.42';
+import {createRealWorld,offRoad,sidewalkTop,width} from './real-world.js?v=0.42';
+import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.42';
+import {actorFactory} from './actors.js?v=0.42';
+import {addRealLandmarks} from './art/real-landmarks.js?v=0.42';
+import {addRealStreetLife} from './art/real-street-life.js?v=0.42';
+import {addRealFacades} from './art/real-facades.js?v=0.42';
+import {addBuildingFronts} from './art/building-fronts.js?v=0.42';
 
 // Construct gameplay objects on a connected part of the real street graph.
 export function buildRealCity({THREE,scene,material,random}){
@@ -76,7 +76,7 @@ export function buildRealCity({THREE,scene,material,random}){
   }
   const checkpoints=[];
   const avenues=network.segments.filter(s=>width(s)>=11&&s.length>31&&s.bridge!=='yes'&&s.tunnel!=='yes');
-  for(const anchor of [...starts,project(-31.4238439,-64.1866539),project(-31.428586,-64.1849148)]){
+  for(const anchor of [...starts,{x:-63,z:28},{x:357,z:-341},{x:-36,z:139},project(-31.4238439,-64.1866539),project(-31.428586,-64.1849148)]){
     const nearby=avenues.map(s=>({s,x:(s.a.x+s.b.x)/2,z:(s.a.z+s.b.z)/2}))
       .sort((a,b)=>Math.hypot(a.x-anchor.x,a.z-anchor.z)-Math.hypot(b.x-anchor.x,b.z-anchor.z));
     for(const {s,x,z} of nearby){

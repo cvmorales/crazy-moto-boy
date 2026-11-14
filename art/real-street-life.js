@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
-import {nearestSegment,project} from '../real-network.js?v=0.41';
-import {offRoad,sidewalkTop,width} from '../real-world.js?v=0.41';
+import {nearestSegment,project} from '../real-network.js?v=0.42';
+import {offRoad,sidewalkTop,width} from '../real-world.js?v=0.42';
 
 // Lightweight visual details: positions are checked against real streets and
 // building collisions; gameplay blockers remain in the mapped world.

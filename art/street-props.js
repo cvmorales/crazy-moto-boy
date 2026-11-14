@@ -1,5 +1,5 @@
-import {nearestSegment} from '../real-network.js?v=0.41';
-import {offRoad,sidewalkTop,width} from '../real-world.js?v=0.41';
+import {nearestSegment} from '../real-network.js?v=0.42';
+import {offRoad,sidewalkTop,width} from '../real-world.js?v=0.42';
 
 // Shared, instanced street furniture. Objects keep independent destruction state.
 export function createStreetProps({THREE,scene,world}){
@@ -116,7 +116,7 @@ export function createStreetProps({THREE,scene,world}){
     const sidewalk=(x,z,r=1.65)=>offRoad(world.network,x,z,r)&&!world.realWorld.blocked(x,z);
     for(const check of world.checkpoints??[]){
       const {x,z,dx,dz,nx,nz,edge}=check;
-      for(const [type,a,b] of [['vallaPolicial',0,edge+2],['cartelPolicial',5,edge+1.6],['conoobra',-6,edge-.28],['conoobra',6,edge-.28]]){
+      for(const [type,a,b] of [['vallaPolicial',0,edge+2],['cartelPolicial',5,edge+1.6],['conoobra',-8,edge-.26],['conoobra',-6,edge-.54],['conoobra',6,edge-.54],['conoobra',8,edge-.26]]){
         const px=x+dx*a+nx*b,pz=z+dz*a+nz*b;
         if(free(px,pz)){const p=place(type,px,pz,Math.atan2(dx,dz),b>edge?sidewalkTop:.01);p.policeCheckpoint=true;}
       }

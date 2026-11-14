@@ -1,4 +1,4 @@
-import {actorFactory} from './actors.js?v=0.41';
+import {actorFactory} from './actors.js?v=0.42';
 // Córdoba arcade: original textured geometry, modelled from photographic references.
 // The street layout is adapted for driving, rather than a navigation map.
 export function buildCity({THREE,scene,box,cylinder,sphere,material,random,pilot=false}) {

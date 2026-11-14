@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
-import {nearestSegment} from '../real-network.js?v=0.41';
-import {sidewalkTop} from '../real-world.js?v=0.41';
+import {nearestSegment} from '../real-network.js?v=0.42';
+import {sidewalkTop} from '../real-world.js?v=0.42';
 
 // All vertical measurements start at the sidewalk instead of repeating
 // a world-space window texture through the plinth and onto the ground.
@@ -32,7 +32,7 @@ export function addBuildingFronts(root, world) {
 
   const counts = {buildings:0, entrances:0, balconies:0, windows:0, storefronts:0};
   for (const building of world.buildings) {
-    if (['1126847036', '1356799523'].includes(building.osmId)) continue;
+    if (['1126847036', '1356799523', '1149552632'].includes(building.osmId)) continue;
     const points = building.points.slice(0,-1);
     if (points.length < 3) continue;
     const seed = Number(building.osmId) || 0;

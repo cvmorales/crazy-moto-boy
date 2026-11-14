@@ -1,7 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
-import {createCordobaArchitecture} from './cordoba-architecture.js?v=0.41';
-import {nearestSegment,project} from '../real-network.js?v=0.41';
-import {offRoad} from '../real-world.js?v=0.41';
+import {createCordobaArchitecture} from './cordoba-architecture.js?v=0.42';
+import {nearestSegment,project} from '../real-network.js?v=0.42';
+import {offRoad} from '../real-world.js?v=0.42';
 
 // Original landmark interpretations fitted into the mapped Córdoba district.
 export function addRealLandmarks(root,world,maps={}){
@@ -20,6 +20,15 @@ export function addRealLandmarks(root,world,maps={}){
     const entryGlass=new THREE.MeshStandardMaterial({color:'#345975',roughness:.28});
     const brass=new THREE.MeshStandardMaterial({color:'#b79250',metalness:.58,roughness:.36});
     const glow=new THREE.MeshStandardMaterial({color:'#ffe1a1',emissive:'#d78e38',emissiveIntensity:.65});
+    const bannerMaterials=['#a13243','#263e73'].map(color=>{
+      if(typeof document==='undefined')return new THREE.MeshStandardMaterial({color});
+      const canvas=document.createElement('canvas');canvas.width=96;canvas.height=256;
+      const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,96,256);
+      ctx.fillStyle='#fff1d1';ctx.textAlign='center';ctx.font='bold 52px Georgia';ctx.fillText('¡O!',48,78);
+      ctx.font='bold 21px Georgia';ctx.fillText('PATIO',48,135);ctx.fillText('OLMOS',48,164);
+      const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;
+      return new THREE.MeshBasicMaterial({map});
+    });
 
     for(let i=1;i<patio.points.length;i++){
       const a=patio.points[i-1],b=patio.points[i],dx=b.x-a.x,dz=b.z-a.z,length=Math.hypot(dx,dz);if(length<3.2)continue;
@@ -60,7 +69,17 @@ export function addRealLandmarks(root,world,maps={}){
           box(portal,2.02,.13,.31,x,8.68,.28,cream);
         }
         box(portal,10.2,5.4,.18,0,2.98,.24,stone);
-        box(portal,8.65,4.32,.21,0,2.5,.36,entryGlass);
+        box(portal,8.65,3.42,.21,0,2.05,.36,entryGlass);
+        const fan=new THREE.Mesh(new THREE.CircleGeometry(1,24,0,Math.PI),entryGlass);
+        fan.scale.set(4.32,2.1,1);fan.position.set(0,3.66,.535);portal.add(fan);
+        const entranceArch=new THREE.Mesh(archGeometry,cream);
+        entranceArch.scale.set(4.65,2.4,2.1);entranceArch.position.set(0,3.67,.55);portal.add(entranceArch);
+        for(let i=1;i<8;i++){
+          const angle=i*Math.PI/8,len=1.94;
+          const spoke=box(portal,.045,len,.055,Math.cos(angle)*1.96,3.67+Math.sin(angle)*.97,.565,brass);
+          spoke.rotation.z=Math.atan2(Math.sin(angle)*2.05,Math.cos(angle)*4.22)-Math.PI/2;
+          spoke.scale.y=Math.hypot(Math.sin(angle)*2.05,Math.cos(angle)*4.22);
+        }
         for(const x of [-4.65,4.65]){
           box(portal,.65,5.3,.60,x,2.82,.5,cream);
           for(const y of [.36,5.2])box(portal,.88,.33,.78,x,y,.55,stone);
@@ -69,12 +88,17 @@ export function addRealLandmarks(root,world,maps={}){
           box(portal,.055,4.04,.09,x,2.48,.49,brass);
         }
         for(const x of [-3.18,-2.94,2.94,3.18])box(portal,.045,.48,.10,x,1.32,.56,brass);
-        box(portal,10.4,.32,1.70,0,4.92,.77,brass);
-        box(portal,9.8,.11,.11,0,4.91,1.64,glow);
+        box(portal,10.4,.27,1.30,0,6.00,.77,brass);
+        box(portal,9.8,.095,.10,0,5.98,1.45,glow);
         box(portal,10.1,.21,1.4,0,.14,.66,stone);
         if(signMaterial){
           const label=new THREE.Mesh(new THREE.PlaneGeometry(9.5,2.38),signMaterial);
-          label.position.set(0,6.36,.62);portal.add(label);
+          label.scale.set(.72,.68,1);label.position.set(0,7.06,.62);portal.add(label);
+        }
+        if(length>18)for(const [i,x] of [-7.2,7.2].entries()){
+          const flag=new THREE.Mesh(new THREE.PlaneGeometry(1.65,4.7),bannerMaterials[i]);
+          flag.position.set(x,7.75,.71);portal.add(flag);
+          box(portal,1.9,.075,.17,x,10.16,.71,brass);
         }
         for(const x of [-8.45,8.45]){
           const corner=portal.localToWorld(new THREE.Vector3(x,0,.85));
@@ -98,33 +122,119 @@ export function addRealLandmarks(root,world,maps={}){
         const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,h,24),mat);
         mesh.position.y=y;court.add(mesh);
       };
-      stoneCircle(3.7,.13,.015,cream);stoneCircle(2.68,.54,.33,stone);
-      stoneCircle(2.39,.08,.61,water);stoneCircle(.69,.85,1.01,cream);
+      stoneCircle(3.75,.13,.015,cream);stoneCircle(3.12,.59,.35,stone);
+      stoneCircle(2.85,.09,.655,water);stoneCircle(.69,.85,1.01,cream);
       stoneCircle(1.10,.15,1.43,stone);stoneCircle(.96,.04,1.53,water);
       const spray=new THREE.MeshBasicMaterial({color:'#bce8ec'});
       for(let i=0;i<8;i++){
         const angle=i*Math.PI/4,points=[];
         for(let j=0;j<=8;j++){
-          const t=j/8,r=.35+1.58*t;
-          points.push(new THREE.Vector3(Math.cos(angle)*r,1.53-.91*t+Math.sin(Math.PI*t)*.69,Math.sin(angle)*r));
+          const t=j/8,r=.35+2.24*t;
+          points.push(new THREE.Vector3(Math.cos(angle)*r,1.53-.85*t+Math.sin(Math.PI*t)*1.48,Math.sin(angle)*r));
         }
-        court.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),8,.027,4,false),spray));
+        court.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),12,.060,5,false),spray));
       }
       box(court,.048,1.08,.048,0,2.04,0,spray);
-      for(const z of [-3.02,3.02]){
+      for(const z of [-3.39,3.39]){
         box(court,2.1,.11,.52,0,.48,z,brass);
         for(const x of [-.77,.77])box(court,.13,.45,.38,x,.23,z,stone);
+      }
+      const palmLeaf=new THREE.MeshStandardMaterial({color:'#467843',side:THREE.DoubleSide});
+      const palmTrunk=new THREE.MeshStandardMaterial({color:'#86705a'});
+      for(const [dx,dz] of [[-4.6,-2],[4.6,2],[-3,4.8],[4.9,-3.5]]){
+        if(world.blocked(plaza.x+dx,plaza.z+dz)||!offRoad(world.network,plaza.x+dx,plaza.z+dz,.7))continue;
+        const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.15,.29,5.5,7),palmTrunk);
+        trunk.position.set(dx,2.75,dz);court.add(trunk);
+        for(let i=0;i<8;i++){
+          const angle=i*Math.PI/4;
+          const leaf=box(court,.44,.09,2.4,dx+Math.sin(angle),5.52,dz+Math.cos(angle),palmLeaf);
+          leaf.rotation.set(.26,angle,0);
+        }
       }
     }
   }
   // Reuse the more detailed original Córdoba landmark models. The placements
   // follow OSM coordinates; proportions are adapted within their mapped plots.
   const legacy=createCordobaArchitecture({roads:[],buildings:[],restaurants:[],galleries:[],colliders:[],limit:325,canalX:-120},maps);
+  const cathedralFootprint=world.buildings.find(b=>b.osmId==='1149552632');
+  const cathedral=legacy.root.getObjectByName('Catedral_Cordoba');
+  if(cathedralFootprint&&cathedral){
+    const {minX,maxX,minZ,maxZ}=cathedralFootprint.bounds;
+    cathedral.position.set((minX+maxX)/2,.12,(minZ+maxZ)/2);
+    cathedral.rotation.y=Math.PI/2;
+    cathedral.scale.set(.94,.92,1.04);
+    cathedral.name='Catedral_Cordoba_Real';root.add(cathedral);
+    const clockFace=new THREE.MeshBasicMaterial({color:'#eae0c4'});
+    const hands=new THREE.MeshBasicMaterial({color:'#30312b'});
+    for(const x of [-20,20]){
+      const plate=new THREE.Mesh(new THREE.CircleGeometry(1.18,24),clockFace);
+      plate.position.set(x,25.2,28.63);cathedral.add(plate);
+      box(cathedral,.08,.83,.045,x,25.49,28.67,hands);
+      box(cathedral,.59,.08,.045,x+.19,25.22,28.67,hands);
+    }
+  }
   for(const [name,lat,lon,scale] of [
     ['Paseo_Buen_Pastor',-31.42384393333333,-64.18665391666667,[.76,1,.76]],
     ['Iglesia_Capuchinos',-31.424288637142855,-64.18571264857142,[.76,1,1.05]]
   ]){
     const model=legacy.root.getObjectByName(name);if(!model)continue;model.removeFromParent();const p=project(lat,lon);model.position.set(p.x,0,p.z);model.scale.set(...scale);model.name=name+'_Real';root.add(model);
+    if(name==='Iglesia_Capuchinos'){
+      const amber=new THREE.MeshBasicMaterial({color:'#bc6545'}),blue=new THREE.MeshBasicMaterial({color:'#396d9e'});
+      const pane=new THREE.CircleGeometry(.72,16);
+      for(let i=0;i<12;i++){
+        const angle=i*Math.PI/6;
+        const petal=new THREE.Mesh(pane,i%2?blue:amber);
+        petal.position.set(Math.cos(angle)*2.63,19+Math.sin(angle)*2.63,22.68);model.add(petal);
+      }
+      for(const x of [-21.7,-16.3,16.3,21.7]){
+        const tip=new THREE.Mesh(new THREE.ConeGeometry(.48,2.4,5),stone);
+        tip.position.set(x,x<0?28.25:32.15,21.9);model.add(tip);
+      }
+    }else{
+      const nozzle=new THREE.MeshStandardMaterial({color:'#d8f2f4',emissive:'#73b4c9',emissiveIntensity:.48});
+      for(let i=0;i<23;i++){
+        const x=-26+i*2.35,h=1.7+Math.sin(i*Math.PI/22)*2.45;
+        box(model,.075,h,.075,x,.65+h/2,29.8,nozzle);
+      }
+      for(const z of [23.4,34.6])box(model,62,.19,.38,0,.55,z,stone);
+    }
+  }
+  // The address is documented. The frontage is interpreted within the
+  // game's simplified parcels on Hipólito Yrigoyen.
+  const seminarStreet=world.network.segments.find(s=>s.a.z<105&&s.b.z>180&&/Yrigoyen/.test(s.name));
+  if(seminarStreet){
+    const dx=(seminarStreet.b.x-seminarStreet.a.x)/seminarStreet.length;
+    const dz=(seminarStreet.b.z-seminarStreet.a.z)/seminarStreet.length;
+    for(const along of [34,20,48])for(const side of [1,-1]){
+      if(root.getObjectByName('Seminario_Mayor_Real'))continue;
+      const x=seminarStreet.a.x+dx*along-dz*side*16,z=seminarStreet.a.z+dz*along+dx*side*16;
+      if(![-7,0,7].every(a=>[-3,0,3].every(d=>{
+        const px=x+a*dx-d*dz,pz=z+a*dz+d*dx;
+        return !world.blocked(px,pz)&&offRoad(world.network,px,pz,1);
+      })))continue;
+      const seminar=new THREE.Group();seminar.name='Seminario_Mayor_Real';
+      seminar.position.set(x,0,z);seminar.rotation.y=-Math.atan2(dz,dx)+(side>0?Math.PI:0);root.add(seminar);
+      const brick=new THREE.MeshStandardMaterial({color:'#9e624d',roughness:.93});
+      box(seminar,14,9,5,0,4.5,0,brick);
+      for(const y of [.40,4.6,8.78])box(seminar,14.25,.23,5.25,0,y,0,stone);
+      for(const x of [-5,-2.5,0,2.5,5]){
+        box(seminar,1.27,2.12,.14,x,6.30,2.53,glass);
+        const arch=new THREE.Mesh(new THREE.TorusGeometry(.73,.085,5,12,Math.PI),cream);
+        arch.position.set(x,7.35,2.62);seminar.add(arch);
+      }
+      box(seminar,2.55,3.55,.2,0,1.89,2.62,cream);
+      box(seminar,1.97,3.1,.14,0,1.77,2.79,glass);
+      box(seminar,3.15,.18,.65,0,.18,2.87,stone);
+      if(typeof document!=='undefined'){
+        const c=document.createElement('canvas');c.width=384;c.height=96;
+        const ctx=c.getContext('2d');ctx.fillStyle='#403534';ctx.fillRect(0,0,384,96);
+        ctx.fillStyle='#fff1cf';ctx.textAlign='center';ctx.font='bold 30px Georgia';ctx.fillText('SEMINARIO MAYOR',192,39);
+        ctx.font='18px Georgia';ctx.fillText('Nuestra Señora de Loreto',192,71);
+        const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;
+        const plaque=new THREE.Mesh(new THREE.PlaneGeometry(6.8,1.46),new THREE.MeshBasicMaterial({map}));
+        plaque.position.set(0,3.95,2.83);seminar.add(plaque);
+      }
+    }
   }
   // Surface interpretation of Plaza España, above the underground museum.
   const p=project(-31.428586006666666,-64.18491475111111),plaza=new THREE.Group();plaza.name='Plaza_Espana_Real';plaza.position.set(p.x,0,p.z);root.add(plaza);
