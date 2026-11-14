@@ -1,14 +1,14 @@
 import * as THREE from './vendor/three.module.js';
-import {buildCity} from './city.js?v=0.39';
-import {buildRealCity} from './real-city.js?v=0.39';
-import {nearestSegment,routeBetween} from './real-network.js?v=0.39';
-import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.39';
-import {createArcadeEffects} from './effects.js?v=0.39';
-import {actorFactory} from './actors.js?v=0.39';
-import {createStreetProps} from './art/street-props.js?v=0.39';
-import {createTouchDrive} from './touch-drive.js?v=0.39';
-import {drawNavigationMap} from './navigation-map.js?v=0.39';
-import {installGameHost} from './android-host.js?v=0.39';
+import {buildCity} from './city.js?v=0.40';
+import {buildRealCity} from './real-city.js?v=0.40';
+import {nearestSegment,routeBetween} from './real-network.js?v=0.40';
+import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.40';
+import {createArcadeEffects} from './effects.js?v=0.40';
+import {actorFactory} from './actors.js?v=0.40';
+import {createStreetProps} from './art/street-props.js?v=0.40';
+import {createTouchDrive} from './touch-drive.js?v=0.40';
+import {drawNavigationMap} from './navigation-map.js?v=0.40';
+import {installGameHost} from './android-host.js?v=0.40';
 
 const $ = (id) => document.getElementById(id);
 const isPilot=document.body.dataset.pilot==='true';
@@ -37,7 +37,7 @@ $('best').textContent = points(state.best);
 
 let renderer;
 try {
-  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({ antialias: !mobileDrive, powerPreference: 'high-performance' });
 } catch {
   $('loading').innerHTML = '<span>Tu navegador necesita WebGL para jugar. Probá con Chrome o Edge y la aceleración gráfica activada.</span>';
   throw new Error('WebGL no disponible');
@@ -515,7 +515,7 @@ function animate(now) {
     else p.arm.rotation.z=-.12;
   }
   if(premiumLayer)premiumLayer.update(state.phase==='paused'?0:dt);
-  cityWorld.updateCrowds();
+  cityWorld.updateCrowds(camera.position,mobileDrive&&premiumLayer?425:740);
   streetProps.update();
   if(state.phase==='menu') {
     const start=startZone();bike.position.set(start.x,0,start.z);bike.rotation.y=start.angle;lean.visible=true;lean.rotation.z=0;
@@ -541,7 +541,7 @@ camera.position.set(...startZone().preview);camera.lookAt(...startZone().look);
 renderer.render(scene,camera);requestAnimationFrame(animate);
 if(isPilot){
   $('loading').innerHTML='<span class="loader"></span> Cargando';
-  import('./premium.js?v=0.39').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
+  import('./premium.js?v=0.40').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state,mobile:mobileDrive})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
     console.error('No se pudo cargar la zona piloto',error);
     $('loading').innerHTML='<div style="max-width:330px;line-height:1.8;text-align:center">No se pudieron cargar los modelos de la zona piloto. <br><button id="retry-assets" class="start-button">REINTENTAR ↗</button></div>';
     $('retry-assets').onclick=()=>window.location.reload();

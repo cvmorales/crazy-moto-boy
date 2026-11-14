@@ -1,11 +1,11 @@
-import {realMapData} from './real-map-data.js?v=0.39';
-import {createRealWorld,offRoad,sidewalkTop,width} from './real-world.js?v=0.39';
-import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.39';
-import {actorFactory} from './actors.js?v=0.39';
-import {addRealLandmarks} from './art/real-landmarks.js?v=0.39';
-import {addRealStreetLife} from './art/real-street-life.js?v=0.39';
-import {addRealFacades} from './art/real-facades.js?v=0.39';
-import {addBuildingFronts} from './art/building-fronts.js?v=0.39';
+import {realMapData} from './real-map-data.js?v=0.40';
+import {createRealWorld,offRoad,sidewalkTop,width} from './real-world.js?v=0.40';
+import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.40';
+import {actorFactory} from './actors.js?v=0.40';
+import {addRealLandmarks} from './art/real-landmarks.js?v=0.40';
+import {addRealStreetLife} from './art/real-street-life.js?v=0.40';
+import {addRealFacades} from './art/real-facades.js?v=0.40';
+import {addBuildingFronts} from './art/building-fronts.js?v=0.40';
 
 // Construct gameplay objects on a connected part of the real street graph.
 export function buildRealCity({THREE,scene,material,random}){
@@ -122,9 +122,27 @@ export function buildRealCity({THREE,scene,material,random}){
   }
   const actorGroups=new Map();
   for(const p of people)p.mesh.traverse(m=>{if(!m.isMesh)return;const key=m.geometry.uuid+':'+m.material.uuid;if(!actorGroups.has(key))actorGroups.set(key,[]);actorGroups.get(key).push({mesh:m,root:p.mesh});m.visible=false;});
-  const batches=[],zero=new THREE.Matrix4().makeScale(0,0,0);
-  for(const items of actorGroups.values()){const batch=new THREE.InstancedMesh(items[0].mesh.geometry,items[0].mesh.material,items.length);scene.add(batch);batches.push({batch,items});}
-  function updateCrowds(){for(const p of people)p.mesh.updateMatrixWorld(true);for(const {batch,items} of batches){items.forEach((o,i)=>batch.setMatrixAt(i,o.root.visible&&!o.root.userData.highDetail?o.mesh.matrixWorld:zero));batch.instanceMatrix.needsUpdate=true;}}
+  const batches=[],visibleCrowd=new Set();
+  for(const items of actorGroups.values()){
+    const batch=new THREE.InstancedMesh(items[0].mesh.geometry,items[0].mesh.material,items.length);
+    batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);batch.frustumCulled=false;batch.count=0;
+    scene.add(batch);batches.push({batch,items});
+  }
+  function updateCrowds(camera,range=740){
+    visibleCrowd.clear();
+    for(const p of people){
+      const root=p.mesh;
+      if(!root.visible||root.userData.highDetail)continue;
+      const dx=root.position.x-camera.x,dz=root.position.z-camera.z;
+      if(dx*dx+dz*dz>range*range)continue;
+      visibleCrowd.add(root);root.updateMatrixWorld(true);
+    }
+    for(const {batch,items} of batches){
+      let count=0;
+      for(const {root,mesh} of items)if(visibleCrowd.has(root))batch.setMatrixAt(count++,mesh.matrixWorld);
+      batch.count=count;batch.instanceMatrix.needsUpdate=true;
+    }
+  }
 
   const realRoot=real.createScene();addRealLandmarks(realRoot,real);addBuildingFronts(realRoot,real);addRealFacades(realRoot,real);addRealStreetLife(realRoot,{network,realWorld:real});const realMaterials=new Map();realRoot.traverse(m=>{if(m.isMesh&&m.material?.name)realMaterials.set(m.material.name,m.material);});
   return {real:true,realWorld:real,network,galleries:real.galleries,realArt:{root:realRoot,materials:realMaterials,streetLamps:realRoot.userData.streetLamps},starts,checkpoints,city,colliders,roads:[-400,-300,-200,-100,0,100,200,300,400],limit:1600,canalX:99999,restaurants,homes,breakables,people,buildings:[],label:()=>{},updateCrowds};

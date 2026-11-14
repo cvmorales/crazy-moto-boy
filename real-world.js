@@ -1,6 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {mergeGeometries} from './vendor/addons/utils/BufferGeometryUtils.js';
-import {buildNetwork,project,nearestSegment} from './real-network.js?v=0.39';
+import {buildNetwork,project,nearestSegment,nearbySegments} from './real-network.js?v=0.40';
 
 // OSM positions are projected at approximately one world unit per metre.
 // Building heights are estimated only where the source has no height/levels.
@@ -10,7 +10,7 @@ export function width(segment){return ['primary','secondary','trunk'].includes(s
 export const sidewalkTop = .24;
 export function offRoad(network,x,z,margin=0){
   const point={x,z};
-  return !network.segments.some(s=>{
+  return !nearbySegments(network,x,z,6.5+margin).some(s=>{
     const clearance=width(s)/2+margin;
     if(x<Math.min(s.a.x,s.b.x)-clearance||x>Math.max(s.a.x,s.b.x)+clearance||
        z<Math.min(s.a.z,s.b.z)-clearance||z>Math.max(s.a.z,s.b.z)+clearance)return false;

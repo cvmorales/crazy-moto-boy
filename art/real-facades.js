@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
-import {sidewalkTop} from '../real-world.js?v=0.39';
+import {sidewalkTop} from '../real-world.js?v=0.40';
 
 // Repeated street-level details share geometry and materials for mobile devices.
 export function addRealFacades(root,world){

@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
-import {nearestSegment} from '../real-network.js?v=0.39';
-import {sidewalkTop} from '../real-world.js?v=0.39';
+import {nearestSegment} from '../real-network.js?v=0.40';
+import {sidewalkTop} from '../real-world.js?v=0.40';
 
 // All vertical measurements start at the sidewalk instead of repeating
 // a world-space window texture through the plinth and onto the ground.

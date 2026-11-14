@@ -1,5 +1,5 @@
-import {nearestSegment} from '../real-network.js?v=0.39';
-import {offRoad,sidewalkTop,width} from '../real-world.js?v=0.39';
+import {nearestSegment} from '../real-network.js?v=0.40';
+import {offRoad,sidewalkTop,width} from '../real-world.js?v=0.40';
 
 // Shared, instanced street furniture. Objects keep independent destruction state.
 export function createStreetProps({THREE,scene,world}){
@@ -9,7 +9,8 @@ export function createStreetProps({THREE,scene,world}){
   function material(color){if(!materials.has(color))materials.set(color,new THREE.MeshStandardMaterial({color,roughness:.8}));return materials.get(color);}
   function piece(prop,shape,color,x,y,z,w,h,d,rz=0){
     const m=new THREE.Mesh(geometries[shape],material(color));m.position.set(x,y,z);m.scale.set(w,h,d);m.rotation.z=rz;m.visible=false;prop.mesh.add(m);prop.parts.push(m);
-    const key=shape+color;if(!groups.has(key))groups.set(key,[]);groups.get(key).push({prop,mesh:m});return m;
+    const sector=world.real&&!prop.carried?':'+Math.floor(prop.x/144)+':'+Math.floor(prop.z/144):'';
+    const key=shape+color+sector;if(!groups.has(key))groups.set(key,[]);groups.get(key).push({prop,mesh:m});return m;
   }
   function make(type,x,z,angle=0,parent=scene){
     const mesh=new THREE.Group();mesh.position.set(x,0,z);mesh.rotation.y=angle;mesh.userData.arcadeDynamic=true;parent.add(mesh);
@@ -271,18 +272,24 @@ export function createStreetProps({THREE,scene,world}){
   }
   const batches=[];const zero=new THREE.Matrix4().makeScale(0,0,0);
   for(const items of groups.values()){
-    const batch=new THREE.InstancedMesh(items[0].mesh.geometry,items[0].mesh.material,items.length);batch.castShadow=false;batch.receiveShadow=true;batch.frustumCulled=false;scene.add(batch);batches.push({batch,items});
+    const batch=new THREE.InstancedMesh(items[0].mesh.geometry,items[0].mesh.material,items.length);batch.castShadow=false;batch.receiveShadow=true;
+    batch.frustumCulled=world.real&&!items.some(item=>item.prop.carried);
+    scene.add(batch);batches.push({batch,items});
   }
+  const movingBatches=batches.filter(({items})=>items.some(({prop})=>prop.carried));
+  const position=new THREE.Vector3();
   function update(){
     if(dirty)for(const p of props)if(!p.carried)p.mesh.updateWorldMatrix(true,true);
-    for(const p of props)if(p.carried){p.mesh.updateWorldMatrix(true,true);const v=p.mesh.getWorldPosition(new THREE.Vector3());p.x=v.x;p.z=v.z;}
-    for(const {batch,items} of batches){let changed=false;items.forEach(({prop,mesh},i)=>{
+    for(const p of props)if(p.carried){p.mesh.updateWorldMatrix(true,true);position.setFromMatrixPosition(p.mesh.matrixWorld);p.x=position.x;p.z=position.z;}
+    for(const {batch,items} of (dirty?batches:movingBatches)){let changed=false;items.forEach(({prop,mesh},i)=>{
       if(!dirty&&!prop.carried)return;
       batch.setMatrixAt(i,!prop.broken&&prop.mesh.visible&&(!prop.owner||prop.owner.mesh.visible)?mesh.matrixWorld:zero);changed=true;
     });if(changed)batch.instanceMatrix.needsUpdate=true;}
     dirty=false;
   }
   function reset(){for(const p of props){p.broken=false;p.mesh.visible=true;}dirty=true;update();}
-  update();for(const p of props)if(!p.carried)p.mesh.removeFromParent();
+  update();
+  for(const {batch} of batches)if(batch.frustumCulled)batch.computeBoundingSphere();
+  for(const p of props)if(!p.carried)p.mesh.removeFromParent();
   return {props,update,reset,drawCalls:batches.length};
 }

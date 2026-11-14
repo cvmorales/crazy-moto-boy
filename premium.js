@@ -2,38 +2,41 @@ import * as THREE from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/addons/loaders/GLTFLoader.js';
 import {HDRLoader} from './vendor/addons/loaders/HDRLoader.js';
 import {clone as cloneRig} from './vendor/addons/utils/SkeletonUtils.js';
-import {poseCourierDriver} from './art/courier-pose.js?v=0.39';
+import {poseCourierDriver} from './art/courier-pose.js?v=0.40';
 import {Sky} from './vendor/addons/Sky.js';
-import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.39';
-import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.39';
-import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.39';
+import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.40';
+import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.40';
+import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.40';
 
-export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState}) {
+export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState,mobile=false}) {
   const gltf=new GLTFLoader(),textures=new THREE.TextureLoader();
   const loadModel=name=>gltf.loadAsync(`./assets/models/${name}.glb`);
-  const [hoodie,casual,woman,punk,man,man2,motorcycle,car,suv,bus,sport,modern,environment,roadColor,roadNormal,roadRough]=await Promise.all([
-    ...['hoodie','casual','woman','punk','man','man2','motorcycle','car','suv','bus','sport','modern-sedan'].map(loadModel),
+  const textureJobs=[
+    ...['calicanto','stucco','paving'].map(name=>cityWorld.real&&name!=='calicanto'?null:textures.loadAsync('./assets/textures/'+name+'-color.jpg')),
+    ...['brick','tile'].map(name=>cityWorld.real?null:textures.loadAsync('./assets/textures/facade-'+name+'.jpg'))
+  ];
+  const [hoodie,casual,woman,punk,man,man2,car,suv,bus,sport,modern,environment,roadColor,roadNormal,roadRough,
+    calicanto,stucco,paving,facadeBrick,facadeTile]=await Promise.all([
+    ...['hoodie','casual','woman','punk','man','man2','car','suv','bus','sport','modern-sedan'].map(loadModel),
     new HDRLoader().loadAsync('./assets/textures/daylight.hdr'),
-    textures.loadAsync('./assets/textures/asphalt-color.jpg'),textures.loadAsync('./assets/textures/asphalt-normal.jpg'),textures.loadAsync('./assets/textures/asphalt-rough.jpg')
+    textures.loadAsync('./assets/textures/asphalt-color.jpg'),textures.loadAsync('./assets/textures/asphalt-normal.jpg'),textures.loadAsync('./assets/textures/asphalt-rough.jpg'),
+    ...textureJobs
   ]);
   const pmrem=new THREE.PMREMGenerator(renderer);const lightmap=pmrem.fromEquirectangular(environment).texture;
   scene.environment=lightmap;scene.environmentIntensity=.48;environment.dispose();pmrem.dispose();
   renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;
-  const mobile=matchMedia('(pointer: coarse)').matches;
-  const maxPixelRatio=mobile?1:1.5;
+  const maxPixelRatio=mobile?.92:1.5;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio,maxPixelRatio));
   renderer.shadowMap.autoUpdate=false;
   for(const l of scene.children)if(l.isDirectionalLight){
-    const shadowSize=1024;l.shadow.mapSize.set(shadowSize,shadowSize);
+    const shadowSize=mobile?512:1024;l.shadow.mapSize.set(shadowSize,shadowSize);
     Object.assign(l.shadow.camera,{left:-75,right:75,top:75,bottom:-75});l.shadow.camera.updateProjectionMatrix();
   }
-  scene.fog=new THREE.Fog('#d8c9b0',190,720);
+  scene.fog=new THREE.Fog('#d8c9b0',mobile?155:190,mobile?410:720);
   scene.background=new THREE.Color('#70bce9');
   roadColor.colorSpace=THREE.SRGBColorSpace;
   for(const t of [roadColor,roadNormal,roadRough]){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;}
-  const [calicanto,stucco,paving]=await Promise.all(['calicanto','stucco','paving'].map(name=>textures.loadAsync('./assets/textures/'+name+'-color.jpg')));
-  const [facadeBrick,facadeTile]=await Promise.all(['brick','tile'].map(name=>textures.loadAsync('./assets/textures/facade-'+name+'.jpg')));
-  for(const t of [calicanto,stucco,paving]){t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;}
+  for(const t of [calicanto,stucco,paving]){if(!t)continue;t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=mobile?2:8;}
   const architecture=cityWorld.real?cityWorld.realArt:createCordobaArchitecture(cityWorld,{calicanto,stucco,paving,facadeBrick,facadeTile,road:roadColor,roadNormal,roadRough});
   const landscape=cityWorld.real?{root:new THREE.Group(),leafMeshes:[]}:createCanopyStreet(cityWorld,{});
   if(cityWorld.real){
@@ -210,11 +213,29 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
       }
       templates.set(key,model);
     }
-    const root=templates.get(key).clone(true);premiumCars.push({root,car:c});c.mesh.removeFromParent();
-    root.traverse(m=>{if(!m.isMesh)return;const key=m.geometry.uuid+':'+m.material.uuid;if(!vehicleGroups.has(key))vehicleGroups.set(key,[]);vehicleGroups.get(key).push(m);m.visible=false;});
+    const root=templates.get(key);root.updateMatrixWorld(true);
+    c.mesh.matrixAutoUpdate=false;
+    c.mesh.removeFromParent();
+    premiumCars.push(c);
+    root.traverse(m=>{
+      if(!m.isMesh)return;
+      const groupKey=m.geometry.uuid+':'+m.material.uuid;
+      if(!vehicleGroups.has(groupKey))vehicleGroups.set(groupKey,[]);
+      vehicleGroups.get(groupKey).push({mesh:m,car:c,local:m.matrixWorld.clone()});
+    });
   });
   const batches=[];
-  for(const items of vehicleGroups.values()){const batch=new THREE.InstancedMesh(items[0].geometry,items[0].material,items.length);batch.castShadow=true;batch.receiveShadow=true;scene.add(batch);batches.push({batch,items});}
+  for(const items of vehicleGroups.values()){
+    const {geometry,material}=items[0].mesh;
+    const batch=new THREE.InstancedMesh(geometry,material,items.length);
+    batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    batch.castShadow=true;batch.receiveShadow=true;batch.frustumCulled=false;
+    scene.add(batch);batches.push({batch,items});
+  }
+  const vehicleMatrix=new THREE.Matrix4();
+  const visibleCars=new Set();
+  const viewProjection=new THREE.Matrix4(),viewFrustum=new THREE.Frustum();
+  const vehicleBounds=new THREE.Sphere(new THREE.Vector3(),5);
   // One instanced, soft contact-shadow layer grounds traffic without a
   // separate light or draw call per vehicle. It follows each moving car.
   const shadowCanvas=document.createElement('canvas');shadowCanvas.width=shadowCanvas.height=128;
@@ -254,16 +275,36 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
       const speed=getState().speed;for(const w of courierMoto.wheelPivots)w.rotation.x-=speed*dt/.44;
       lodTimer+=dt;if(lodTimer>.7){assignCrowd();updateStreetLights();lodTimer=0;}
       for(const slot of pool)if(slot.person)slot.mixer.update(dt*(slot.person.walk?.8:1));
-      premiumCars.forEach((item,i)=>{item.root.position.copy(item.car.mesh.position);item.root.rotation.copy(item.car.mesh.rotation);item.root.updateMatrixWorld(true);
-        shadowObject.position.set(item.root.position.x,.055,item.root.position.z);shadowObject.rotation.set(0,item.root.rotation.y,0);shadowObject.scale.set(item.car.bus?3.6:2.7,1,item.car.bus?8.8:5.2);shadowObject.updateMatrix();carShadows.setMatrixAt(i,shadowObject.matrix);
-      });carShadows.instanceMatrix.needsUpdate=true;
-      for(const {batch,items} of batches){items.forEach((m,i)=>batch.setMatrixAt(i,m.matrixWorld));batch.instanceMatrix.needsUpdate=true;}
+      visibleCars.clear();
+      camera.updateMatrixWorld();
+      viewFrustum.setFromProjectionMatrix(viewProjection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse));
+      let shadowCount=0;
+      premiumCars.forEach(car=>{
+        const dx=car.mesh.position.x-camera.position.x,dz=car.mesh.position.z-camera.position.z;
+        if(dx*dx+dz*dz>(mobile?425:740)**2)return;
+        vehicleBounds.center.copy(car.mesh.position);vehicleBounds.center.y=1;
+        if(!viewFrustum.intersectsSphere(vehicleBounds))return;
+        visibleCars.add(car);
+        car.mesh.updateMatrix();
+        shadowObject.position.set(car.mesh.position.x,.055,car.mesh.position.z);
+        shadowObject.rotation.set(0,car.mesh.rotation.y,0);
+        shadowObject.scale.set(car.bus?3.6:2.7,1,car.bus?8.8:5.2);
+        shadowObject.updateMatrix();carShadows.setMatrixAt(shadowCount++,shadowObject.matrix);
+      });carShadows.count=shadowCount;carShadows.instanceMatrix.needsUpdate=true;
+      for(const {batch,items} of batches){
+        let count=0;
+        for(const {car,local} of items)if(visibleCars.has(car)){
+          batch.setMatrixAt(count++,vehicleMatrix.multiplyMatrices(car.mesh.matrix,local));
+        }
+        batch.count=count;
+        batch.instanceMatrix.needsUpdate=true;
+      }
     },
     render(dt){
       const now=performance.now(),elapsed=(now-lastFrame)/1000;lastFrame=now;frames++;if(now-sampleStart>1000){fps=Math.round(frames*1000/(now-sampleStart));frames=0;sampleStart=now;}
       if(getState().phase==='playing'&&document.visibilityState!=='hidden'&&elapsed>.028&&elapsed<5)slowTime+=elapsed;else slowTime=Math.max(0,slowTime-elapsed*.5);
       if(slowTime>2&&quality>.65){quality=Math.max(.65,quality-.15);renderer.setPixelRatio(Math.min(window.devicePixelRatio,quality));slowTime=0;}
-      renderer.shadowMap.needsUpdate=(frame++%4===0);renderer.render(scene,camera);
+      renderer.shadowMap.needsUpdate=(frame++%(mobile?8:4)===0);renderer.render(scene,camera);
     },
     getMetrics(){return {fps,pixelRatio:quality,animatedPeople:pool.length,postprocessing:false};
     }

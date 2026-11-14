@@ -13,10 +13,20 @@ export function drawNavigationMap({ctx,player,roads,limit,canalX,realNetwork=nul
   ctx.clearRect(0,0,SIZE,SIZE);ctx.save();ctx.beginPath();ctx.arc(CENTER,CENTER,RADIUS,0,Math.PI*2);ctx.clip();
   ctx.fillStyle='#152a30';ctx.fillRect(0,0,SIZE,SIZE);
   if(realNetwork){
-    ctx.lineCap='round';ctx.lineWidth=10*scale;ctx.strokeStyle='#458ba0';
-    for(const s of realNetwork.water){if(Math.min(Math.abs(s.a.x-player.x),Math.abs(s.b.x-player.x))>300||Math.min(Math.abs(s.a.z-player.z),Math.abs(s.b.z-player.z))>300)continue;line([[s.a.x,s.a.z],[s.b.x,s.b.z]]);ctx.stroke();}
-    ctx.strokeStyle='#67818a';ctx.lineWidth=8*scale;
-    for(const s of realNetwork.segments){if(Math.min(Math.abs(s.a.x-player.x),Math.abs(s.b.x-player.x))>300||Math.min(Math.abs(s.a.z-player.z),Math.abs(s.b.z-player.z))>300)continue;line([[s.a.x,s.a.z],[s.b.x,s.b.z]]);ctx.stroke();}
+    ctx.lineCap='round';
+    function drawSegments(segments,width,color){
+      ctx.lineWidth=width*scale;ctx.strokeStyle=color;ctx.beginPath();
+      const reach=RADIUS/scale+12;
+      for(const {a,b} of segments){
+        if(Math.min(a.x,b.x)>player.x+reach||Math.max(a.x,b.x)<player.x-reach||
+           Math.min(a.z,b.z)>player.z+reach||Math.max(a.z,b.z)<player.z-reach)continue;
+        const start=p(a.x,a.z),end=p(b.x,b.z);
+        ctx.moveTo(start.x,start.y);ctx.lineTo(end.x,end.y);
+      }
+      ctx.stroke();
+    }
+    drawSegments(realNetwork.water,10,'#458ba0');
+    drawSegments(realNetwork.segments,8,'#67818a');
   }else{
     for(let i=0;i<roads.length-1;i++)for(let j=0;j<roads.length-1;j++)block(roads[i]+12,roads[j]+12,76,76,'#294146');
     block(14,-86,72,72,'#355d4a');block(114,14,72,72,'#355d4a');block(canalX-6,-limit,12,limit*2,'#458ba0');
