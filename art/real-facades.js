@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
-import {nearestSegment} from '../real-network.js?v=0.36';
+import {sidewalkTop} from '../real-world.js?v=0.39';
 
 // Repeated street-level details share geometry and materials for mobile devices.
 export function addRealFacades(root,world){
@@ -8,45 +8,24 @@ export function addRealFacades(root,world){
   const materials=[new THREE.MeshStandardMaterial({color:'#305766',roughness:.5}),new THREE.MeshStandardMaterial({color:'#f5ead0'}),...['#b34835','#367c6e','#d49b32','#475d89','#baa48b','#a66754','#d7c8a4','#607274','#353e3e','#a39e8d'].map(color=>new THREE.MeshStandardMaterial({color,roughness:.85}))];
   const parts=materials.map(()=>[]);
   function add(k,x,y,z,w,h,d,angle){parts[k].push({x,y,z,w,h,d,angle});}
-  let storefronts=0;const labels=['CAFÉ','MODA','PANADERÍA','ALMACÉN','LOMITOS','LIBRERÍA','FLORERÍA','HELADOS'];const signs=labels.map(()=>[]),displays=Array.from({length:4},()=>[]);
-  for(const b of world.buildings){
-    if(b.galleryWing||b.name||!b.infill)continue;
-    const x=(b.bounds.minX+b.bounds.maxX)/2,z=(b.bounds.minZ+b.bounds.maxZ)/2,s=nearestSegment(world.network,{x,z});if(!s||s.distance>48)continue;
-    const dx=s.point.x-x,dz=s.point.z-z,alongX=Math.abs(dx)>Math.abs(dz),side=Math.sign(alongX?dx:dz)||1;
-    const fx=x+(alongX?side*6.04:0),fz=z+(!alongX?side*6.04:0),angle=alongX?Math.PI/2:0;
-    add(0,fx,1.55,fz,8.4,2.8,.10,angle);add(1,fx,3.12,fz,9,.23,.15,angle);
-    for(const t of [-4,-1.4,1.4,4]){const px=fx+(alongX?0:t),pz=fz+(alongX?t:0);add(1,px,1.55,pz,.10,2.8,.16,angle);}
-    const ox=alongX?side*.46:0,oz=alongX?0:side*.46;
-    add(2+storefronts%4,fx+ox,3.35,fz+oz,9,.20,1,angle);
-    signs[storefronts%4].push({x:fx+(alongX?side*.12:0),z:fz+(!alongX?side*.12:0),angle:angle+(side<0?Math.PI:0),y:3.85});
-    // Cream stripes make the awning read at a distance.
-    for(let j=-3;j<=3;j+=2){const tx=alongX?0:j,tz=alongX?j:0;add(1,fx+ox+tx,3.47,fz+oz+tz,.72,.025,1,angle);}
-    // Projecting balconies, slab edges and railings give the upper storeys
-    // real depth rather than painting every detail into one flat texture.
-    for(let floor=1;floor<Math.min(5,Math.floor((b.height-2)/3.2));floor++){
-      const y=3.8+floor*3.1,bx=fx+(alongX?side*.42:0),bz=fz+(!alongX?side*.42:0);
-      add(1,bx,y,bz,8,.18,.95,angle);
-      const rx=fx+(alongX?side*.83:0),rz=fz+(!alongX?side*.83:0);add(0,rx,y+.9,rz,8,.10,.10,angle);
-      for(let j=-3;j<=3;j++)add(0,rx+(alongX?0:j),y+.48,rz+(alongX?j:0),.065,.8,.08,angle);
-    }
-    storefronts++;
-  }
+  const labels=['CAFÉ','MODA','PANADERÍA','ALMACÉN','LOMITOS','LIBRERÍA','FLORERÍA','HELADOS'];const signs=labels.map(()=>[]),displays=Array.from({length:4},()=>[]);
   let streetShops=0;
   for(const [i,row] of world.commercialRows.entries()){
     const {x,z,dx,dz,nx,nz,length,depth,side}=row,angle=-Math.atan2(dz,dx)+(side>0?Math.PI:0),count=Math.round(length/5.1);
-    const part=(mat,a,y,b,w,h,d)=>add(mat,x+dx*a+nx*b,y,z+dz*a+nz*b,w,h,d,angle);
+    const part=(mat,a,y,b,w,h,d)=>add(mat,x+dx*a+nx*b,y+sidewalkTop,z+dz*a+nz*b,w,h,d,angle);
     const shell=6+i%4,upper=i%4!==0,top=upper?6.7:3.95;
     part(shell,0,top/2,depth/2,length,top,depth);part(11,0,top+.05,depth/2,length+.15,.18,depth+.15);
     part(1,0,3.61,0,length,.21,.19);part(10,0,.28,0,length,.54,.14);
     for(let j=0;j<count;j++){
       const a=(j-(count-1)/2)*5.1,k=(i*3+j)%labels.length,accent=2+k%4;
-      part(10,a,1.57,-.055,4.63,2.74,.19);part(0,a-.62,1.6,-.16,2.87,2.3,.05);part(0,a+1.37,1.47,-.16,.94,2.58,.05);
+      part(10,a,1.57,-.055,4.63,2.74,.19);part(0,a-.62,1.6,-.16,2.87,2.3,.05);part(0,a+1.37,1.30,-.16,.94,2.58,.05);
+      part(1,a+1.37,.03,-.18,1.07,.06,.54);
       displays[k%4].push({x:x+dx*(a-.62)-nx*.193,z:z+dz*(a-.62)-nz*.193,angle});
       for(const t of [-2.09,-.61,.82,1.91])part(1,a+t,1.59,-.20,.07,2.45,.07);
       part(1,a-.61,2.21,-.20,2.95,.065,.09);part(1,a+1.62,1.16,-.23,.06,.28,.08);
       part(accent,a,3.15,-.64,4.76,.13,1.22);part(accent,a,3.04,-1.2,4.76,.2,.09);
       for(let stripe=-1.9;stripe<=1.91;stripe+=.95)part(1,a+stripe,3.23,-.64,.32,.021,1.22);
-      part(1,a,3.65,-.16,3.65,.75,.12);signs[k].push({x:x+dx*a-nx*.24,z:z+dz*a-nz*.24,angle,y:3.65});
+      part(1,a,3.65,-.16,3.65,.75,.12);signs[k].push({x:x+dx*a-nx*.24,z:z+dz*a-nz*.24,angle,y:3.65+sidewalkTop});
       if(upper){for(const t of [-1.18,1.18]){part(1,a+t,5.28,-.05,1.12,1.61,.12);part(0,a+t,5.28,-.125,.92,1.37,.06);part(1,a+t,4.53,-.19,1.31,.12,.37);}
         if(i%3!==0){part(1,a,4.47,-.38,3.6,.16,.92);part(10,a,5.26,-.83,3.6,.08,.08);for(const t of [-1.7,-1.1,-.55,0,.55,1.1,1.7])part(10,a+t,4.9,-.83,.06,.72,.07);}
       }
@@ -62,7 +41,7 @@ export function addRealFacades(root,world){
     q.fillStyle='rgba(92,166,184,.27)';q.fillRect(0,0,128,96);q.fillStyle='rgba(218,237,235,.23)';q.beginPath();q.moveTo(8,0);q.lineTo(46,0);q.lineTo(18,96);q.lineTo(0,96);q.fill();
     const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;
     const mesh=new THREE.InstancedMesh(new THREE.PlaneGeometry(2.84,2.25),new THREE.MeshStandardMaterial({map,roughness:.48,emissiveMap:map,emissive:'#a89473',emissiveIntensity:.32}),items.length);mesh.name='Vidrieras_Con_Exhibicion';
-    items.forEach((p,i)=>{dummy.position.set(p.x,1.6,p.z);dummy.rotation.set(0,p.angle,0);dummy.scale.set(1,1,1);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});group.add(mesh);
+    items.forEach((p,i)=>{dummy.position.set(p.x,1.6+sidewalkTop,p.z);dummy.rotation.set(0,p.angle,0);dummy.scale.set(1,1,1);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});group.add(mesh);
   });
   labels.forEach((name,index)=>{if(!signs[index].length)return;const c=document.createElement('canvas');c.width=256;c.height=64;const q=c.getContext('2d');q.fillStyle=['#69382f','#384969','#865833','#2d5b4c'][index%4];q.fillRect(0,0,256,64);q.strokeStyle='#e5c887';q.strokeRect(4,4,248,56);q.fillStyle='#fff1cc';q.textAlign='center';q.textBaseline='middle';q.font='bold 32px sans-serif';q.fillText(name,128,32,245);const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;
     const m=new THREE.InstancedMesh(new THREE.PlaneGeometry(3.4,.65),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}),signs[index].length);m.name='Carteles_De_Locales';signs[index].forEach((p,i)=>{dummy.position.set(p.x,p.y,p.z);dummy.rotation.set(0,p.angle,0);dummy.scale.set(1,1,1);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);});group.add(m);
@@ -76,5 +55,5 @@ export function addRealFacades(root,world){
     const canvas=document.createElement('canvas');canvas.width=512;canvas.height=96;const c=canvas.getContext('2d');c.fillStyle='#245c56';c.fillRect(0,0,512,96);c.fillStyle='#fff3ca';c.textAlign='center';c.textBaseline='middle';c.font='bold 35px sans-serif';c.fillText(gallery.name,256,48,490);
     const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;const sign=new THREE.Mesh(new THREE.PlaneGeometry(6.2,1),new THREE.MeshBasicMaterial({map:tex}));sign.rotation.y=Math.PI/2;sign.position.set(length/2-.1,4.65,0);arcade.add(sign);const sign2=sign.clone();sign2.position.x=-length/2+.1;sign2.rotation.y=-Math.PI/2;arcade.add(sign2);
   }
-  group.userData.storefronts=storefronts;group.userData.streetShops=streetShops;group.userData.galleries=world.galleries.length;
+  group.userData.streetShops=streetShops;group.userData.galleries=world.galleries.length;
 }

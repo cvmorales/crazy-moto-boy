@@ -1,14 +1,14 @@
 import * as THREE from './vendor/three.module.js';
-import {buildCity} from './city.js?v=0.36';
-import {buildRealCity} from './real-city.js?v=0.36';
-import {nearestSegment,routeBetween} from './real-network.js?v=0.36';
-import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.36';
-import {createArcadeEffects} from './effects.js?v=0.36';
-import {actorFactory} from './actors.js?v=0.36';
-import {createStreetProps} from './art/street-props.js?v=0.36';
-import {createTouchDrive} from './touch-drive.js?v=0.36';
-import {drawNavigationMap} from './navigation-map.js?v=0.36';
-import {installGameHost} from './android-host.js?v=0.36';
+import {buildCity} from './city.js?v=0.39';
+import {buildRealCity} from './real-city.js?v=0.39';
+import {nearestSegment,routeBetween} from './real-network.js?v=0.39';
+import {createTraffic,advanceTraffic} from './real-traffic.js?v=0.39';
+import {createArcadeEffects} from './effects.js?v=0.39';
+import {actorFactory} from './actors.js?v=0.39';
+import {createStreetProps} from './art/street-props.js?v=0.39';
+import {createTouchDrive} from './touch-drive.js?v=0.39';
+import {drawNavigationMap} from './navigation-map.js?v=0.39';
+import {installGameHost} from './android-host.js?v=0.39';
 
 const $ = (id) => document.getElementById(id);
 const isPilot=document.body.dataset.pilot==='true';
@@ -110,15 +110,24 @@ function makeCar(color,bus=false) {
 }
 const cars=[],vehicleTemplates=new Map();
 const nearbyTraffic=realMode?cityWorld.starts.map(start=>cityWorld.network.segments.filter(s=>s.length>14&&Math.hypot((s.a.x+s.b.x)/2-start.x,(s.a.z+s.b.z)/2-start.z)>18&&Math.hypot((s.a.x+s.b.x)/2-start.x,(s.a.z+s.b.z)/2-start.z)<95)):[];
-for(let i=0;i<190;i++) {
+const patrols=realMode?cityWorld.checkpoints.map(check=>check.car):[];
+const trafficCount=realMode?290:190;
+for(let i=0;i<trafficCount+patrols.length;i++) {
   const axis=i<28?'z':i%2===0?'x':'z',lane=i<28?-100:roads[1+Math.floor(random()*(roads.length-2))];
   const dir=i%3===0?-1:1;
-  const bus=i%23===0,parked=i<12||i>160,color=bus?'#e83024':['#ffdc19','#119d64','#f74428','#fffbea','#187bd6','#8c47b5'][i%6],key=color+bus;
+  const patrol=patrols[i-trafficCount],bus=!patrol&&i%23===0;
+  const parked=realMode?!!patrol:i<12||i>160;
+  const color=patrol?'#e5edf5':bus?'#e83024':['#ffdc19','#119d64','#f74428','#fffbea','#187bd6','#8c47b5'][i%6],key=color+bus;
   let mesh;
   if(vehicleTemplates.has(key)){mesh=vehicleTemplates.get(key).clone(true);city.add(mesh);}
   else{mesh=makeCar(color,bus);vehicleTemplates.set(key,mesh);if(bus)cityWorld.label('LÍNEA 20',0,2.6,-4.03,2,'#161b1c','#ffdd20',Math.PI,mesh);}
-  const car={mesh,axis,lane,dir,pos:i<28?-170+i*18:random()*(limit*2-50)-limit+25,speed:parked?0:12+random()*12,near:false,bus,parked};
-  if(realMode){const nearby=nearbyTraffic[i%3],seg=i<45&&nearby.length?nearby[Math.floor(i/3)%nearby.length]:cityWorld.network.segments[(i*17)%cityWorld.network.segments.length];const point=i<45?{x:(seg.a.x+seg.b.x)/2,z:(seg.a.z+seg.b.z)/2}:seg.a;car.realState=createTraffic(cityWorld.network,point,random);if(parked)car.realState.speed=0;}
+  const car={mesh,axis,lane,dir,pos:i<28?-170+i*18:random()*(limit*2-50)-limit+25,speed:parked?0:12+random()*12,near:false,bus,parked,patrol};
+  if(realMode&&!patrol){
+    const nearby=nearbyTraffic[i%3];
+    const seg=i<66&&nearby.length?nearby[Math.floor(i/3)%nearby.length]:cityWorld.network.segments[(i*17)%cityWorld.network.segments.length];
+    const t=.17+(i%7)*.107;
+    car.realState=createTraffic(cityWorld.network,{x:seg.a.x+(seg.b.x-seg.a.x)*t,z:seg.a.z+(seg.b.z-seg.a.z)*t},random);
+  }
   cars.push(car);
 }
 const vehicleGroups=new Map();
@@ -431,7 +440,10 @@ function tickDestruction(px,pz,nx,nz) {
 }
 function tickTraffic(dt) {
   for(const car of cars) {
-    if(realMode){
+    if(car.patrol){
+      car.mesh.position.set(car.patrol.x,0,car.patrol.z);
+      car.mesh.rotation.y=car.patrol.angle;
+    }else if(realMode){
       advanceTraffic(cityWorld.network,car.realState,dt,random);car.mesh.rotation.y=car.realState.angle;const laneOffset=2.2;car.mesh.position.set(car.realState.position.x+Math.cos(car.realState.angle)*laneOffset,0,car.realState.position.z-Math.sin(car.realState.angle)*laneOffset);
     }else{
     car.pos+=car.dir*car.speed*dt;if(car.pos>limit+10)car.pos=-limit-10;if(car.pos<-limit-10)car.pos=limit+10;
@@ -522,13 +534,14 @@ function animate(now) {
     const active=state.audio&&state.phase==='playing';engineGain.gain.setTargetAtTime(active ? .025 : 0,audioContext.currentTime,.1);
     oscillator.frequency.setTargetAtTime(43+Math.abs(state.speed)*3,audioContext.currentTime,.1);
   }
+  if(realMode)cityWorld.realArt.root.userData.updateTreeVisibility(camera.position,bike.position,state.phase!=='menu');
   if(premiumLayer)premiumLayer.render(dt);else renderer.render(scene,camera);requestAnimationFrame(animate);
 }
 camera.position.set(...startZone().preview);camera.lookAt(...startZone().look);
 renderer.render(scene,camera);requestAnimationFrame(animate);
 if(isPilot){
   $('loading').innerHTML='<span class="loader"></span> Cargando';
-  import('./premium.js?v=0.36').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
+  import('./premium.js?v=0.39').then(({loadDistrict})=>loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState:()=>state})).then(layer=>{premiumLayer=layer;$('loading').classList.add('hidden');gameHost.send('ready');}).catch(error=>{
     console.error('No se pudo cargar la zona piloto',error);
     $('loading').innerHTML='<div style="max-width:330px;line-height:1.8;text-align:center">No se pudieron cargar los modelos de la zona piloto. <br><button id="retry-assets" class="start-button">REINTENTAR ↗</button></div>';
     $('retry-assets').onclick=()=>window.location.reload();

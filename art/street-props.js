@@ -1,3 +1,6 @@
+import {nearestSegment} from '../real-network.js?v=0.39';
+import {offRoad,sidewalkTop,width} from '../real-world.js?v=0.39';
+
 // Shared, instanced street furniture. Objects keep independent destruction state.
 export function createStreetProps({THREE,scene,world}){
   const props=[],groups=new Map(),materials=new Map(),geometries={box:new THREE.BoxGeometry(1,1,1),cylinder:new THREE.CylinderGeometry(1,1,1,8),sphere:new THREE.SphereGeometry(1,8,6)};
@@ -77,6 +80,19 @@ export function createStreetProps({THREE,scene,world}){
       p.r=.8;b(metal,0,.85,0,.09,1.7,.1);b(metal,0,.08,0,.9,.12,.8);b(cream,0,1.7,0,1.5,1.25,.12);b(red,0,1.72,-.07,1.28,.22,.03,-.65);b(red,0,2.08,-.07,1.28,.22,.03,-.65);
     }else if(type==='cajonobra'){
       p.r=.8;b(wood,0,.5,0,1.3,1,1);for(const x of [-.45,.45])b(cream,x,.5,-.51,.1,.95,.05);b(cream,0,.5,-.53,1.2,.1,.05);
+    }else if(type==='vallaPolicial'){
+      p.r=1.35;
+      for(const x of [-1.08,1.08]){
+        b(metal,x,.54,0,.09,1.08,.09);b(metal,x,.07,0,.34,.13,.72);
+      }
+      b('#34577f',0,.89,0,2.4,.39,.13);
+      for(const x of [-.88,-.44,0,.44,.88])b('#e4eef3',x,.89,.08,.21,.23,.04,-.35);
+    }else if(type==='cartelPolicial'){
+      p.r=.65;b(metal,0,.72,0,.09,1.44,.09);b(metal,0,.08,0,.76,.11,.54);
+      b('#34577f',0,1.52,0,1.03,.66,.12);
+      b('#edf4f1',0,1.52,.071,.79,.22,.03);
+      b('#34577f',0,1.52,.094,.57,.07,.02);
+      b('#75a6d6',0,1.88,0,.38,.11,.15);
     }else if(type==='bolsa'){
       p.r=.65;p.mesh.position.y=1.1;b('#d5ab68',0,0,0,.55,.65,.38);for(const x of [-.14,.14])b(cream,x,.4,0,.045,.25,.045);b(cream,0,.53,0,.32,.045,.045);
     }else if(type==='bandeja'){
@@ -89,39 +105,102 @@ export function createStreetProps({THREE,scene,world}){
     make('cartel',x+2,z-4);make('maceta',x+5,z+27);make('papelera',x+3,z-27);
   }
   if(world.real){
+    const free = (x,z,r=.6) => !world.realWorld.blocked(x,z) &&
+      props.every(p=>Math.hypot(p.x-x,p.z-z)>Math.min(2.3,p.r+r));
+    const place = (type,x,z,angle=0,y=0) => {
+      const prop=make(type,x,z,angle);
+      prop.mesh.position.y=y;
+      return prop;
+    };
+    const sidewalk=(x,z,r=1.65)=>offRoad(world.network,x,z,r)&&!world.realWorld.blocked(x,z);
+    for(const check of world.checkpoints??[]){
+      const {x,z,dx,dz,nx,nz,edge}=check;
+      for(const [type,a,b] of [['vallaPolicial',0,edge+2],['cartelPolicial',5,edge+1.6],['conoobra',-6,edge-.28],['conoobra',6,edge-.28]]){
+        const px=x+dx*a+nx*b,pz=z+dz*a+nz*b;
+        if(free(px,pz)){const p=place(type,px,pz,Math.atan2(dx,dz),b>edge?sidewalkTop:.01);p.policeCheckpoint=true;}
+      }
+    }
+    const avenueView = segment => width(segment)>=11 && segment.length>42 && segment.bridge!=='yes' && segment.tunnel!=='yes';
+    const usedScenes=[];
+    for(const anchor of [...world.starts,world.realArt.root.userData.landmarkPositions.plaza]){
+      const options=world.network.segments.filter(avenueView).map(segment=>({
+        segment,x:(segment.a.x+segment.b.x)/2,z:(segment.a.z+segment.b.z)/2
+      })).sort((a,b)=>Math.hypot(a.x-anchor.x,a.z-anchor.z)-Math.hypot(b.x-anchor.x,b.z-anchor.z));
+      {
+        for(const {segment:s,x,z} of options){
+          if(usedScenes.some(p=>Math.hypot(p.x-x,p.z-z)<62)||world.checkpoints?.some(p=>Math.hypot(p.x-x,p.z-z)<35))continue;
+          const dx=(s.b.x-s.a.x)/s.length,dz=(s.b.z-s.a.z)/s.length,edge=width(s)/2;
+          const layout=[['vallaobra',0,edge+.23],['cartelobra',-10,edge-.32],['barrilobra',3,edge+.12],
+            ['cajonobra',6,edge+1.1],['conoobra',-6,edge-.62],['conoobra',-3,edge-.56],['conoobra',7,edge-.43],['conoobra',10,edge-.25]];
+          const items=[-1,1].map(side=>layout.map(([type,a,b])=>({type,b,x:x+dx*a-dz*b*side,z:z+dz*a+dx*b*side}))).find(group=>group.every(p=>{
+            return free(p.x,p.z,.75)&&nearestSegment(world.network,p).segment===s;
+          }));
+          if(!items)continue;
+          for(const p of items){const object=place(p.type,p.x,p.z,-Math.atan2(dz,dx),p.b>edge+.4?sidewalkTop:.01);object.roadwork=true;}
+          usedScenes.push({x,z});break;
+        }
+      }
+    }
+    const {pastor,plaza}=world.realArt.root.userData.landmarkPositions;
+    for(const {x,z} of world.realWorld.parkSites??[]){
+      for(const [type,dx,dz,angle] of [['banco',-4.8,5,0],['banco',4.8,5,0],['banco',-6,0,Math.PI/2],['papelera',6.6,5,0],
+        ['maceta',-6.1,-5,0],['maceta',6.1,-5,0],['cartel',6.5,3.1,0]]){
+        if(sidewalk(x+dx,z+dz,1.25)&&free(x+dx,z+dz,1.1))place(type,x+dx,z+dz,angle,.09);
+      }
+    }
+    // Small markets use the clear perimeter of the existing green areas.
+    for(const [i,{x,z}] of (world.realWorld.parkSites??[]).entries()){
+      if(i%3===1)continue;
+      for(const [type,dx,dz] of [['puesto',-5,-6.4],['flores',-.4,-6.4],['ropa',4.5,-6.4],
+        ['cajonobra',-2.7,-7.4],['revistas',-6.4,1.8],['cartel',6.1,2.7]]){
+        const px=x+dx,pz=z+dz;
+        if(sidewalk(px,pz,2)&&free(px,pz,1.4))place(type,px,pz,Math.PI,.08);
+      }
+    }
+    for(const center of [pastor,plaza])for(let i=0;i<16;i++){
+      const angle=i*Math.PI/8,r=i%2?17:13;
+      const x=center.x+Math.cos(angle)*r,z=center.z+Math.sin(angle)*r,road=nearestSegment(world.network,{x,z});
+      if(road.distance<width(road.segment)/2+1.7||!sidewalk(x,z,1.85)||!free(x,z,1.2))continue;
+      place(['banco','papelera','maceta','flores','puesto','cartel'][i%6],x,z,Math.PI/2-angle,.16);
+    }
     // Place small breakables along the actual road segments instead of the old grid.
     const types=['cartel','maceta','papelera','conoobra','cajonobra','silla','mesa','banco','flores','carrito','puesto','parasol','revistas'];let placed=0;
     for(const segment of world.network.segments){if(segment.length<20||placed>=800)continue;
       const dx=segment.b.x-segment.a.x,dz=segment.b.z-segment.a.z,len=segment.length;
       for(const side of [-1,1]){if(placed>=800)break;
-        const offset=segment.highway==='primary'?8.5:7.2;
+        const offset=width(segment)/2+2.15;
         const x=(segment.a.x+segment.b.x)/2-side*dz/len*offset,z=(segment.a.z+segment.b.z)/2+side*dx/len*offset;
-        if(world.realWorld.blocked(x,z))continue;make(types[placed%types.length],x,z,Math.atan2(dx,dz));placed++;
+        if(!sidewalk(x,z,2)||!free(x,z,1.3))continue;place(types[placed%types.length],x,z,Math.atan2(dx,dz),sidewalkTop);placed++;
       }
     }
     // Reinforce street activity around starting points and recognizable places.
     const anchors=[...world.starts,{x:0,z:0},world.realArt.root.userData.landmarkPositions.pastor,world.realArt.root.userData.landmarkPositions.plaza];
     for(const anchor of anchors){let local=0;
       for(const segment of world.network.segments){if(local>=12||segment.length<18)continue;const dx=segment.b.x-segment.a.x,dz=segment.b.z-segment.a.z,len=segment.length,mx=(segment.a.x+segment.b.x)/2,mz=(segment.a.z+segment.b.z)/2;if(Math.hypot(mx-anchor.x,mz-anchor.z)>85)continue;
-        for(const side of [-1,1]){const x=mx-side*dz/len*7.5,z=mz+side*dx/len*7.5;if(world.realWorld.blocked(x,z))continue;make(['banco','cartel','maceta','flores','carrito','papelera'][local%6],x,z,Math.atan2(dx,dz));local++;if(local>=12)break;}
+        for(const side of [-1,1]){const offset=width(segment)/2+2.05,x=mx-side*dz/len*offset,z=mz+side*dx/len*offset;if(!sidewalk(x,z,1.85)||!free(x,z))continue;place(['banco','cartel','maceta','flores','carrito','papelera'][local%6],x,z,Math.atan2(dx,dz),sidewalkTop);local++;if(local>=12)break;}
       }
     }
     // Cafe furniture near actual game pickup kiosks, kept off solid buildings.
     for(const shop of world.restaurants){if(!shop.mesh.parent)continue;const x=shop.mesh.position.x,z=shop.mesh.position.z;
-      for(const [type,dx,dz] of [['mesa',4,0],['silla',3,-1.4],['silla',5,1.4],['parasol',4,0],['cartel',-3,0]])if(!world.realWorld.blocked(x+dx,z+dz))make(type,x+dx,z+dz);
+      for(const [type,dx,dz] of [['mesa',4,0],['silla',3,-1.4],['silla',5,1.4],['parasol',4,0],['cartel',-3,0]])if(sidewalk(x+dx,z+dz,1.35))place(type,x+dx,z+dz,0,sidewalkTop);
     }
     for(const [i,row] of world.realWorld.commercialRows.entries()){
       const position=(a,b)=>[row.x+row.dx*a-row.nx*b,row.z+row.dz*a-row.nz*b];
-      for(const [type,a,b] of (i%5===0?[['mesa',-2.7,1.1],['silla',-4.3,1.1],['cartel',2.8,1.15]]:[[['flores','ropa','revistas','banco'][i%4],-2.55,1.02]])){
-        const [x,z]=position(a,b);if(world.realWorld.blocked(x,z)||props.some(p=>Math.hypot(p.x-x,p.z-z)<1.65))continue;
-        make(type,x,z,-Math.atan2(row.dz,row.dx));
+      const cafeRow=i%3!==1;
+      const furniture=cafeRow?[['mesa',-3.1,1.65],['silla',-4.8,1.65],['silla',-1.4,1.65],
+        ['mesa',2.8,1.65],['silla',1.1,1.65],['silla',4.5,1.65],['cartel',0,.52]]:
+        [[['flores','ropa','revistas','banco'][i%4],-2.55,1.22],['maceta',2.2,.65],['cartel',0,.55]];
+      for(const [type,a,b] of furniture){
+        const [x,z]=position(a,b);if(!sidewalk(x,z,type==='mesa'||type==='banco'?1.35:.8)||props.some(p=>Math.hypot(p.x-x,p.z-z)<1.65))continue;
+        place(type,x,z,-Math.atan2(row.dz,row.dx),sidewalkTop);
+        if(type==='mesa'&&i%2===0)place('parasol',x,z,-Math.atan2(row.dz,row.dx),sidewalkTop);
       }
     }
     for(const gallery of world.galleries||[])for(let along=-(gallery.length||12)/2+2;along<(gallery.length||12)/2;along+=4)for(const side of [-1,1]){
       const dx=gallery.axis==='path'?gallery.dx:gallery.axis==='x'?1:0,dz=gallery.axis==='path'?gallery.dz:gallery.axis==='x'?0:1;
       const x=gallery.x+dx*along-dz*side*2.3,z=gallery.z+dz*along+dx*side*2.3;
       const type=['ropa','revistas','flores','perchero','cartel','carrito'][Math.round((along+(gallery.length||12)/2-2)/4+ (side>0?2:0))%6];
-      if(!world.realWorld.blocked(x,z)){const prop=make(type,x,z,-Math.atan2(dz,dx));prop.gallery=gallery.name;}
+      if(sidewalk(x,z,1.4)){const prop=make(type,x,z,-Math.atan2(dz,dx));prop.gallery=gallery.name;}
     }
   }else{
   world.restaurants.forEach(s=>cafe(...s.pickup));

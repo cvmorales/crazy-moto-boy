@@ -1,12 +1,22 @@
 import * as THREE from './vendor/three.module.js';
 import {mergeGeometries} from './vendor/addons/utils/BufferGeometryUtils.js';
-import {buildNetwork,project,nearestSegment} from './real-network.js?v=0.36';
+import {buildNetwork,project,nearestSegment} from './real-network.js?v=0.39';
 
 // OSM positions are projected at approximately one world unit per metre.
 // Building heights are estimated only where the source has no height/levels.
 function distance(p,a,b){const dx=b.x-a.x,dz=b.z-a.z,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/(dx*dx+dz*dz)));return Math.hypot(p.x-a.x-t*dx,p.z-a.z-t*dz);}
 function inside(p,poly){let yes=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a.z>p.z)!==(b.z>p.z)&&p.x<(b.x-a.x)*(p.z-a.z)/(b.z-a.z)+a.x)yes=!yes;}return yes;}
-function width(segment){return ['primary','secondary','trunk'].includes(segment.highway)?13:['tertiary','primary_link','secondary_link'].includes(segment.highway)?11:8;}
+export function width(segment){return ['primary','secondary','trunk'].includes(segment.highway)?13:['tertiary','primary_link','secondary_link'].includes(segment.highway)?11:8;}
+export const sidewalkTop = .24;
+export function offRoad(network,x,z,margin=0){
+  const point={x,z};
+  return !network.segments.some(s=>{
+    const clearance=width(s)/2+margin;
+    if(x<Math.min(s.a.x,s.b.x)-clearance||x>Math.max(s.a.x,s.b.x)+clearance||
+       z<Math.min(s.a.z,s.b.z)-clearance||z>Math.max(s.a.z,s.b.z)+clearance)return false;
+    return distance(point,s.a,s.b)<clearance;
+  });
+}
 export function createRealWorld(data){
   const network=buildNetwork(data),buildings=[];
   const nw=project(data.bbox[3],data.bbox[0]),se=project(data.bbox[1],data.bbox[2]);
@@ -95,8 +105,41 @@ export function createRealWorld(data){
 
   // Continuous commercial fronts aligned to the sidewalk. Their shallow floor
   // plans sit entirely behind the curb, with the same footprint for collisions.
-  const commercialRows=[];
-  function populateCommerce(starts){
+  const commercialRows=[],parkSites=[];
+  function populateParks(){
+    for(const polygon of greenPolygons){
+      const xs=polygon.map(p=>p.x),zs=polygon.map(p=>p.z);
+      const minX=Math.min(...xs),maxX=Math.max(...xs),minZ=Math.min(...zs),maxZ=Math.max(...zs);
+      if(maxX-minX<19||maxZ-minZ<19)continue;
+      const clear=(x,z,r)=>[[0,0],[-r,-r],[-r,r],[r,-r],[r,r]].every(([dx,dz])=>{
+        const p={x:x+dx,z:z+dz};
+        return inside(p,polygon)&&!blocked(p.x,p.z)&&offRoad(network,p.x,p.z,.9);
+      });
+      const sites=[];
+      for(let x=minX+9;x<maxX-8;x+=12)for(let z=minZ+9;z<maxZ-8;z+=12){
+        if(clear(x,z,8))sites.push({x,z});
+      }
+      sites.sort((a,b)=>Math.hypot(a.x-(minX+maxX)/2,a.z-(minZ+maxZ)/2)-Math.hypot(b.x-(minX+maxX)/2,b.z-(minZ+maxZ)/2));
+      for(const p of sites){
+        if(parkSites.some(other=>Math.hypot(p.x-other.x,p.z-other.z)<43))continue;
+        if(Math.hypot(p.x-plaza.x,p.z-plaza.z)<38||Math.hypot(p.x-pastor.x,p.z-pastor.z)<23)continue;
+        parkSites.push(p);
+      }
+    }
+    // Fill open paved blocks as well as surveyed green spaces. Keep distant
+    // terrain outside the street network out of the placement search.
+    for(let x=nw.x+16;x<se.x-16;x+=27)for(let z=nw.z+16;z<se.z-16;z+=27){
+      if(parkSites.some(p=>Math.hypot(p.x-x,p.z-z)<54))continue;
+      if(Math.hypot(x-plaza.x,z-plaza.z)<42||Math.hypot(x-pastor.x,z-pastor.z)<30)continue;
+      const road=nearestSegment(network,{x,z});
+      if(!road||road.distance<width(road.segment)/2+12||road.distance>125)continue;
+      if(network.water.some(s=>distance({x,z},s.a,s.b)<24))continue;
+      const offsets=[-8,0,8];
+      if(!offsets.every(dx=>offsets.every(dz=>!blocked(x+dx,z+dz)&&offRoad(network,x+dx,z+dz,1.8))))continue;
+      parkSites.push({x,z,paved:true});
+    }
+  }
+  function populateCommerce(starts,kiosks=[]){
     addPassages(starts);
     const anchors=[...starts,project(-31.41978,-64.18805),pastor,plaza];
     const segments=network.segments.filter(s=>s.length>16&&s.tunnel!=='yes'&&s.bridge!=='yes');
@@ -106,7 +149,7 @@ export function createRealWorld(data){
       const length=s.length>27?15.3:10.2,depth=4.7,offset=width(s)/2+3.7;
       if(Math.hypot(mid.x-pastor.x,mid.z-pastor.z)<42||Math.hypot(mid.x-plaza.x,mid.z-plaza.z)<55)return false;
       const x=mid.x+nx*offset,z=mid.z+nz*offset;
-      if(galleries.some(g=>Math.hypot(g.x-x,g.z-z)<(g.length||12)/2+9))return false;
+      if(galleries.some(g=>Math.hypot(g.x-x,g.z-z)<(g.length||12)/2+9)||kiosks.some(p=>Math.hypot(p.x-x,p.z-z)<length/2+5))return false;
       const at=(a,b)=>({x:x+dx*a+nx*b,z:z+dz*a+nz*b});
       for(let i=0;i<=6;i++)for(const d of [-2,0,depth/2,depth]){
         const p=at(length*(i/6-.5),d),snap=nearestSegment(network,p);
@@ -123,7 +166,7 @@ export function createRealWorld(data){
       }
     }
     // Continue the rhythm between landmarks without filling every open lot.
-    for(let i=0;i<segments.length&&commercialRows.length<135;i+=3)for(const side of [-1,1])addRow(segments[i],side,.5);
+    for(let i=0;i<segments.length&&commercialRows.length<185;i+=2)for(const side of [-1,1])addRow(segments[i],side,.5);
   }
   function createScene(){
     const root=new THREE.Group();root.name='Cordoba_OSM_escala_metros';
@@ -139,14 +182,43 @@ export function createRealWorld(data){
     // Mapped green areas sit above terrain and below roads.
     const greenAreas=[];for(const area of data.greens||[]){const points=area.node_ids.map(id=>network.nodes.get(id)).filter(Boolean);if(points.length<4)continue;const shape=new THREE.Shape();shape.moveTo(points[0].x,-points[0].z);for(const p of points.slice(1))shape.lineTo(p.x,-p.z);shape.closePath();const g=new THREE.ShapeGeometry(shape);g.rotateX(-Math.PI/2);greenAreas.push(g);}
     if(greenAreas.length){const g=mergeGeometries(greenAreas,false);greenAreas.forEach(x=>x.dispose());if(g){const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:'#739659',roughness:1,side:THREE.DoubleSide}));m.position.y=-.075;m.name='Areas_Verdes_OSM';root.add(m);}}
-    function roadMesh(segments,color,y,getWidth){
+    function roadMesh(segments,color,y,getWidth,connectJunctions=false){
       const vertices=[],uv=[];
+      const junctions=new Map();
+      function triangle(a,b,c){
+        vertices.push(...a,...b,...c);
+        for(const v of [a,b,c])uv.push(v[0]*.045,v[2]*.045);
+      }
       for(const s of segments){const dx=s.b.x-s.a.x,dz=s.b.z-s.a.z,len=Math.hypot(dx,dz);if(!len)continue;const w=getWidth(s)/2,nx=-dz/len*w,nz=dx/len*w;
-        const a=[s.a.x+nx,y,s.a.z+nz],b=[s.a.x-nx,y,s.a.z-nz],c=[s.b.x+nx,y,s.b.z+nz],d=[s.b.x-nx,y,s.b.z-nz];vertices.push(...a,...b,...c,...b,...d,...c);for(const v of [a,b,c,b,d,c])uv.push(v[0]*.045,v[2]*.045);}
+        const a=[s.a.x+nx,y,s.a.z+nz],b=[s.a.x-nx,y,s.a.z-nz],c=[s.b.x+nx,y,s.b.z+nz],d=[s.b.x-nx,y,s.b.z-nz];
+        triangle(a,b,c);triangle(b,d,c);
+        if(connectJunctions)for(const point of [s.a,s.b]){
+          const joint=junctions.get(point)??{count:0,radius:0};
+          joint.count++;joint.radius=Math.max(joint.radius,w);junctions.set(point,joint);
+        }
+      }
+      for(const [point,{count,radius}] of junctions){
+        if(count<2)continue;
+        const center=[point.x,y,point.z];
+        const edge=i=>[point.x+Math.cos(i*Math.PI/6)*radius,y,point.z+Math.sin(i*Math.PI/6)*radius];
+        for(let i=0;i<12;i++)triangle(center,edge(i+1),edge(i));
+      }
       const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.computeVertexNormals();const mesh=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color,roughness:.95,side:THREE.DoubleSide}));root.add(mesh);return mesh;
     }
-    roadMesh(network.water,'#5b9ba3',-1.75,()=>10.7).name='Arroyo_La_Canada';
-    roadMesh(network.segments,'#646769',.01,width).name='Calzadas_OSM';
+    const water=roadMesh(network.water,'#348f92',-2.45,()=>11.55);
+    water.name='Arroyo_La_Canada';water.material.roughness=.34;water.material.metalness=.12;
+    if(typeof document!=='undefined'){
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=128;
+      const brush=canvas.getContext('2d');brush.fillStyle='#77b5ad';brush.fillRect(0,0,128,128);
+      for(let i=0;i<54;i++){
+        brush.fillStyle=i%3===0?'#b2d7c6':'#609e9e';
+        brush.fillRect((i*47)%112,(i*29)%128,5+(i*11)%24,1);
+      }
+      const ripples=new THREE.CanvasTexture(canvas);ripples.colorSpace=THREE.SRGBColorSpace;
+      ripples.wrapS=ripples.wrapT=THREE.RepeatWrapping;ripples.repeat.set(7,16);
+      water.material.map=ripples;water.material.bumpMap=ripples;water.material.bumpScale=.035;
+    }
+    roadMesh(network.segments,'#646769',.01,width,true).name='Calzadas_OSM';
     // Low stone retaining walls follow both banks and leave actual bridge gaps.
     const wallParts=[];
     for(const segment of network.water){const dx=segment.b.x-segment.a.x,dz=segment.b.z-segment.a.z,n=Math.max(1,Math.ceil(segment.length/2.5)),ux=dx/segment.length,uz=dz/segment.length;
@@ -155,7 +227,13 @@ export function createRealWorld(data){
       }
     }
     const wallGeo=new THREE.BoxGeometry(1,1,1),wallMat=new THREE.MeshStandardMaterial({color:'#9b9b88',roughness:.95}),capMat=new THREE.MeshStandardMaterial({color:'#c4bea9',roughness:.9}),wall=new THREE.InstancedMesh(wallGeo,wallMat,wallParts.length),cap=new THREE.InstancedMesh(wallGeo,capMat,wallParts.length),wallDummy=new THREE.Object3D();wall.name='Muros_La_Canada';cap.name='Bordes_La_Canada';
-    wallParts.forEach((p,i)=>{wallDummy.position.set(p.x,-.84,p.z);wallDummy.rotation.set(0,p.angle,0);wallDummy.scale.set(1.3,2,p.length);wallDummy.updateMatrix();wall.setMatrixAt(i,wallDummy.matrix);wallDummy.position.y=.17;wallDummy.scale.set(1.5,.17,p.length);wallDummy.updateMatrix();cap.setMatrixAt(i,wallDummy.matrix);});root.add(wall,cap);root.userData.canalWalls=wallParts;
+    wallParts.forEach((p,i)=>{
+      wallDummy.position.set(p.x,-.97,p.z);wallDummy.rotation.set(0,p.angle,0);
+      wallDummy.scale.set(1.35,3.35,p.length);wallDummy.updateMatrix();wall.setMatrixAt(i,wallDummy.matrix);
+      wallDummy.position.y=.75;wallDummy.scale.set(1.55,.19,p.length);wallDummy.updateMatrix();cap.setMatrixAt(i,wallDummy.matrix);
+      cap.setColorAt(i,new THREE.Color().setScalar(.87+(i%5)*.025));
+    });
+    wall.receiveShadow=cap.receiveShadow=true;root.add(wall,cap);root.userData.canalWalls=wallParts;
 
     // Pavement is drawn alongside mapped road segments. Segments are shortened
     // at their ends so the raised edges do not cross the actual intersections.
@@ -169,33 +247,53 @@ export function createRealWorld(data){
         if((d===3||end===seg.length-3)&&end-d>1.2)tactile.push({a,b:{x:a.x+dx*.65,z:a.z+dz*.65}});
       }
     }
-    const sidewalk=roadMesh(sidewalks,'#d0c6b5',.055,()=>3.1);sidewalk.name='Veredas_Reales';sidewalk.receiveShadow=true;
+    const sidewalk=roadMesh(sidewalks,'#d0c6b5',sidewalkTop,()=>3.1);sidewalk.name='Veredas_Reales';sidewalk.receiveShadow=true;
     if(typeof document!=='undefined'){
       const c=document.createElement('canvas');c.width=c.height=256;const ctx=c.getContext('2d');
       for(let y=0;y<256;y+=8)for(let x=0;x<256;x+=8){ctx.fillStyle=['#b1aca0','#c4bdb0','#cec8b9','#beb9ad','#d3cbbc'][(x*3+y*7+x*y/64)%5];ctx.fillRect(x,y,8,8);ctx.fillStyle='#918b81';ctx.fillRect(x,y,8,1);ctx.fillRect(x,y,1,8);ctx.fillStyle='rgba(255,255,255,.19)';ctx.fillRect(x+1,y+1,7,1);}
-      const tiles=new THREE.CanvasTexture(c);tiles.wrapS=tiles.wrapT=THREE.RepeatWrapping;tiles.colorSpace=THREE.SRGBColorSpace;sidewalk.material.map=tiles;sidewalk.material.bumpMap=tiles;sidewalk.material.bumpScale=.034;
+      const tiles=new THREE.CanvasTexture(c);tiles.wrapS=tiles.wrapT=THREE.RepeatWrapping;tiles.colorSpace=THREE.SRGBColorSpace;sidewalk.material.map=tiles;sidewalk.material.bumpMap=tiles;sidewalk.material.bumpScale=.052;
     }
-    const curbGeo=new THREE.BoxGeometry(1,1,1),curb=new THREE.InstancedMesh(curbGeo,new THREE.MeshStandardMaterial({color:'#d7cfc0',roughness:.94}),curbs.length),curbDummy=new THREE.Object3D();curb.name='Cordones_De_Vereda';
-    curbs.forEach(({a,b},i)=>{curbDummy.position.set((a.x+b.x)/2,.029,(a.z+b.z)/2);curbDummy.rotation.y=Math.atan2(b.x-a.x,b.z-a.z);curbDummy.scale.set(.23,.11,Math.hypot(b.x-a.x,b.z-a.z));curbDummy.updateMatrix();curb.setMatrixAt(i,curbDummy.matrix);});root.add(curb);
-    roadMesh(drains,'#41494a',.064,()=>.34).name='Desagues_De_Vereda';
-    roadMesh(tactile,'#c6a350',.063,()=>1.35).name='Baldosas_De_Esquina';
+    const curbGeo=new THREE.BoxGeometry(1,1,1),curbDummy=new THREE.Object3D();
+    const curb=new THREE.InstancedMesh(curbGeo,new THREE.MeshStandardMaterial({color:'#aca594',roughness:.94}),curbs.length);
+    const base=new THREE.InstancedMesh(curbGeo,new THREE.MeshStandardMaterial({color:'#8e887b',roughness:1}),sidewalks.length);
+    curb.name='Cordones_De_Vereda';base.name='Laterales_De_Vereda';
+    function placePavementPart(mesh,i,{a,b},width,top){
+      const bottom=-.125;
+      curbDummy.position.set((a.x+b.x)/2,(bottom+top)/2,(a.z+b.z)/2);
+      curbDummy.rotation.y=Math.atan2(b.x-a.x,b.z-a.z);
+      curbDummy.scale.set(width,top-bottom,Math.hypot(b.x-a.x,b.z-a.z));curbDummy.updateMatrix();
+      mesh.setMatrixAt(i,curbDummy.matrix);
+    }
+    curbs.forEach((part,i)=>placePavementPart(curb,i,part,.25,sidewalkTop+.015));
+    sidewalks.forEach((part,i)=>placePavementPart(base,i,part,3.09,sidewalkTop-.012));
+    curb.receiveShadow=base.receiveShadow=true;root.add(curb,base);
+    roadMesh(drains,'#41494a',sidewalkTop+.01,()=>.34).name='Desagues_De_Vereda';
+    roadMesh(tactile,'#c6a350',sidewalkTop+.009,()=>1.35).name='Baldosas_De_Esquina';
     // Segmented centre lines keep the streets legible without blocking crossings.
     const markings=[];
     for(const seg of network.segments){if(seg.length<25||seg.tunnel==='yes')continue;const dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length;
       for(let d=9;d<seg.length-9;d+=11)markings.push({a:{x:seg.a.x+dx*d,z:seg.a.z+dz*d},b:{x:seg.a.x+dx*(d+3),z:seg.a.z+dz*(d+3)}});
     }
     roadMesh(markings,'#eee7d5',.075,()=>.18).name='Marcas_Viales_Reales';
-
-    const palette=['#e7cfaa','#d0b199','#ded7c4','#dfb8a1','#c5c0ae','#e2cda6'],groups=palette.map(()=>[]),roofs=[];
-    let facade=null,litWindows=null;
-    if(typeof document!=='undefined'){
-      const c=document.createElement('canvas');c.width=c.height=256;const p=c.getContext('2d');p.fillStyle='#f2e5d1';p.fillRect(0,0,256,256);
-      for(let y=12;y<256;y+=64)for(let x=10;x<256;x+=64){p.fillStyle='#938a7c';p.fillRect(x-3,y-3,44,51);p.fillStyle='#4b7482';p.fillRect(x,y,38,45);p.fillStyle='#91b7bc';p.fillRect(x+2,y+2,13,20);p.fillStyle='#ddd8c9';p.fillRect(x+18,y,2,45);p.fillRect(x,y+22,38,2);p.fillRect(x-4,y+45,46,4);}
-      facade=new THREE.CanvasTexture(c);facade.wrapS=facade.wrapT=THREE.RepeatWrapping;facade.repeat.set(.075,.075);facade.colorSpace=THREE.SRGBColorSpace;
-      const nc=document.createElement('canvas');nc.width=nc.height=256;const q=nc.getContext('2d');q.fillStyle='#000';q.fillRect(0,0,256,256);
-      for(let y=12;y<256;y+=64)for(let x=10;x<256;x+=64)if((x*7+y*3)%5!==0){q.fillStyle='#ffc876';q.fillRect(x+1,y+1,36,43);}
-      litWindows=new THREE.CanvasTexture(nc);litWindows.wrapS=litWindows.wrapT=THREE.RepeatWrapping;litWindows.repeat.set(.075,.075);litWindows.colorSpace=THREE.SRGBColorSpace;
+    const roadDegree=new Map();
+    for(const s of network.segments)for(const node of [s.a,s.b])roadDegree.set(node,(roadDegree.get(node)??0)+1);
+    const endMarkings=[];
+    for(const s of network.segments){
+      if(s.length<7||s.bridge==='yes'||s.tunnel==='yes')continue;
+      const dx=(s.b.x-s.a.x)/s.length,dz=(s.b.z-s.a.z)/s.length;
+      for(const [end,direction] of [[s.a,1],[s.b,-1]]){
+        if(roadDegree.get(end)!==1)continue;
+        const x=end.x+dx*direction*.9,z=end.z+dz*direction*.9;
+        for(const side of [-1,1]){
+          const from=side*.7,to=side*(width(s)/2-.55);
+          endMarkings.push({a:{x:x-dz*from,z:z+dx*from},b:{x:x-dz*to,z:z+dx*to}});
+        }
+      }
     }
+    roadMesh(endMarkings,'#d6b16b',.065,()=>.23).name='Finales_De_Calle';
+
+    const palette=['#d8b789','#b98570','#dcd3bc','#d6a88f','#b9bdab','#d8c299'];
+    const groups=palette.map(()=>[]),roofs=[];
     for(const b of buildings){
       if(b.osmId==='1126847036'||b.osmId==='1356799523')continue;
       const points=b.points.slice(0,-1);if(points.length<3)continue;const shape=new THREE.Shape();shape.moveTo(points[0].x,-points[0].z);for(const p of points.slice(1))shape.lineTo(p.x,-p.z);shape.closePath();
@@ -205,7 +303,7 @@ export function createRealWorld(data){
       if(non!==geometry)non.dispose();geometry.dispose();
     }
     if(roofs.length){const roofGeometry=mergeGeometries(roofs,false);roofs.forEach(g=>g.dispose());if(roofGeometry){const roofMesh=new THREE.Mesh(roofGeometry,new THREE.MeshStandardMaterial({color:'#b5ab99',roughness:.95}));roofMesh.name='Techos_Cordoba';roofMesh.receiveShadow=true;root.add(roofMesh);}}
-    groups.forEach((geometries,i)=>{if(!geometries.length)return;const geometry=mergeGeometries(geometries,false);geometries.forEach(g=>g.dispose());if(geometry){const buildingMaterial=new THREE.MeshStandardMaterial({color:palette[i],roughness:.9,...(facade?{map:facade,emissive:'#000000',emissiveMap:litWindows,emissiveIntensity:0}:{})});buildingMaterial.name='Fachada_Lod_Real_'+i;const m=new THREE.Mesh(geometry,buildingMaterial);m.name='Edificios_OSM_'+i;m.receiveShadow=true;root.add(m);}});
+    groups.forEach((geometries,i)=>{if(!geometries.length)return;const geometry=mergeGeometries(geometries,false);geometries.forEach(g=>g.dispose());if(geometry){const buildingMaterial=new THREE.MeshStandardMaterial({color:palette[i],roughness:.88});buildingMaterial.name='Muro_Real_'+i;const m=new THREE.Mesh(geometry,buildingMaterial);m.name='Edificios_OSM_'+i;m.receiveShadow=true;root.add(m);}});
     root.userData.landmarkPositions={pastor,plaza};
     const posts=[],lamps=[];
     for(const seg of network.segments){if(seg.length<30||posts.length>=100)continue;const x=(seg.a.x+seg.b.x)/2-((seg.b.z-seg.a.z)/seg.length)*7,z=(seg.a.z+seg.b.z)/2+((seg.b.x-seg.a.x)/seg.length)*7;if(blocked(x,z)||posts.some(p=>Math.hypot(p.x-x,p.z-z)<38))continue;posts.push({x,z});}
@@ -214,5 +312,5 @@ export function createRealWorld(data){
     posts.forEach((p,i)=>{dummy.position.set(p.x,3,p.z);dummy.updateMatrix();poles.setMatrixAt(i,dummy.matrix);dummy.position.y=6;dummy.updateMatrix();bulbs.setMatrixAt(i,dummy.matrix);lamps.push({x:p.x,y:6,z:p.z});});root.add(poles,bulbs);root.userData.streetLamps=lamps;
     return root;
   }
-  return {network,buildings,bridges,galleries,commercialRows,populateCommerce,blocked,createScene};
+  return {network,buildings,bridges,galleries,commercialRows,parkSites,populateCommerce,populateParks,blocked,createScene};
 }

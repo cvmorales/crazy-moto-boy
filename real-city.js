@@ -1,10 +1,11 @@
-import {realMapData} from './real-map-data.js?v=0.36';
-import {createRealWorld} from './real-world.js?v=0.36';
-import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.36';
-import {actorFactory} from './actors.js?v=0.36';
-import {addRealLandmarks} from './art/real-landmarks.js?v=0.36';
-import {addRealStreetLife} from './art/real-street-life.js?v=0.36';
-import {addRealFacades} from './art/real-facades.js?v=0.36';
+import {realMapData} from './real-map-data.js?v=0.39';
+import {createRealWorld,offRoad,sidewalkTop,width} from './real-world.js?v=0.39';
+import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.39';
+import {actorFactory} from './actors.js?v=0.39';
+import {addRealLandmarks} from './art/real-landmarks.js?v=0.39';
+import {addRealStreetLife} from './art/real-street-life.js?v=0.39';
+import {addRealFacades} from './art/real-facades.js?v=0.39';
+import {addBuildingFronts} from './art/building-fronts.js?v=0.39';
 
 // Construct gameplay objects on a connected part of the real street graph.
 export function buildRealCity({THREE,scene,material,random}){
@@ -20,15 +21,32 @@ export function buildRealCity({THREE,scene,material,random}){
   if(connected.length<12)throw new Error('Red vial insuficiente para entregas');
   connected.sort((a,b)=>network.nodes.get(a).z-network.nodes.get(b).z);
   const nodeAt=(i,n)=>connected[Math.min(connected.length-1,Math.floor((i+.3)*connected.length/n))];
-  function person(x,z,waiting=false){const model=actors.pedestrian({shirt:['#bd3427','#286fb4','#ece5cb','#e0ad2d','#7b4c93'][people.length%5],female:people.length%3===1,cap:people.length%4===0,pants:'#3d4c5a'});model.mesh.position.set(x,.05,z);model.mesh.visible=!waiting;city.add(model.mesh);const p={...model,baseZ:z,waiting:false,walk:!waiting,phase:people.length*1.7};people.push(p);return p;}
+  function person(x,z,waiting=false,police=false){const model=actors.pedestrian({shirt:police?'#263e59':['#bd3427','#286fb4','#ece5cb','#e0ad2d','#7b4c93'][people.length%5],female:people.length%3===1,cap:police||people.length%4===0,pants:police?'#202c3e':'#3d4c5a'});model.mesh.position.set(x,sidewalkTop,z);model.mesh.visible=!waiting;city.add(model.mesh);const p={...model,baseZ:z,waiting:false,walk:!waiting&&!police,police,phase:people.length*1.7};people.push(p);return p;}
+  const clearSidewalk=(x,z,margin)=>offRoad(network,x,z,margin)&&!real.blocked(x,z);
+  function kioskSpot(p){
+    const roads=network.segments.filter(s=>s.length>12&&s.bridge!=='yes'&&s.tunnel!=='yes')
+      .sort((a,b)=>Math.hypot(a.a.x-p.x,a.a.z-p.z)-Math.hypot(b.a.x-p.x,b.a.z-p.z));
+    for(const road of roads){
+      const dx=(road.b.x-road.a.x)/road.length,dz=(road.b.z-road.a.z)/road.length;
+      for(const t of [.28,.5,.72])for(const side of [-1,1]){
+        const offset=width(road)/2+2;
+        const x=road.a.x+dx*road.length*t-dz*offset*side;
+        const z=road.a.z+dz*road.length*t+dx*offset*side;
+        if(Math.hypot(x-p.x,z-p.z)>28||!clearSidewalk(x,z,1.93))continue;
+        if([-1,1].every(u=>[-1,1].every(v=>clearSidewalk(x+u*dx*1.8-v*dz*1.3,z+u*dz*1.8+v*dx*1.3,.12))))
+          return {x,z,angle:-Math.atan2(dz,dx)+(side<0?Math.PI:0)};
+      }
+    }
+    return null;
+  }
   const shopNames=['CAFÉ DE BARRIO','LOMITERÍA','PIZZERÍA','PANADERÍA','BODEGÓN','PARRILLA'];
   for(let i=0;i<6;i++){
     const p=network.nodes.get(nodeAt(i,6));
-    const clerk=person(p.x+2,p.z+2);clerk.walk=false;
-    const kiosk=new THREE.Group(),seg=nearestSegment(network,p).segment,dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length;
-    let spot=null;for(const side of [-1,1])for(const offset of [7,10,13]){const x=p.x-side*dz*offset,z=p.z+side*dx*offset;if(!real.blocked(x,z)&&!spot)spot={x,z};}
+    const kiosk=new THREE.Group(),spot=kioskSpot(p);
+    const clerk=person(spot?.x??p.x,spot?.z??p.z);clerk.walk=false;
+    if(!spot)clerk.mesh.visible=false;
     if(spot){
-      kiosk.position.set(spot.x,0,spot.z);const frame=new THREE.Mesh(new THREE.BoxGeometry(3,2.5,2),new THREE.MeshStandardMaterial({color:'#8f4d38',roughness:.9}));frame.position.y=1.25;kiosk.add(frame);
+      kiosk.position.set(spot.x,sidewalkTop,spot.z);kiosk.rotation.y=spot.angle;const frame=new THREE.Mesh(new THREE.BoxGeometry(3,2.5,2),new THREE.MeshStandardMaterial({color:'#8f4d38',roughness:.9}));frame.position.y=1.25;kiosk.add(frame);
       const roof=new THREE.Mesh(new THREE.BoxGeometry(3.6,.22,2.6),new THREE.MeshStandardMaterial({color:'#efd69a'}));roof.position.y=2.6;kiosk.add(roof);
       const c=document.createElement('canvas');c.width=512;c.height=128;const q=c.getContext('2d');q.fillStyle='#21594d';q.fillRect(0,0,512,128);q.fillStyle='#fff1c2';q.textAlign='center';q.textBaseline='middle';q.font='bold 48px sans-serif';q.fillText(shopNames[i],256,64,480);
       const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;const sign=new THREE.Mesh(new THREE.PlaneGeometry(3.2,.8),new THREE.MeshBasicMaterial({map:tex,side:THREE.DoubleSide}));sign.position.set(0,2.25,-1.02);kiosk.add(sign);scene.add(kiosk);
@@ -39,11 +57,6 @@ export function buildRealCity({THREE,scene,material,random}){
   if(homeCandidates.length<6)throw new Error('No hay destinos separados de los comercios');
   for(let i=0;i<6;i++){const h=network.nodes.get(homeCandidates[Math.floor((i+.5)*homeCandidates.length/6)]),recipient=person(h.x+2,h.z+2,true);homes.push({name:'Entrega en Córdoba',drop:[h.x,h.z],recipient,address:'Nueva Córdoba',personName:['Sofi','Nico','Mica','Lauti','Flor','Juan'][i]});}
 
-  for(let i=0;i<150;i++){
-    const id=connected[(i*13)%connected.length],p=network.nodes.get(id),seg=nearestSegment(network,p).segment,dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length;
-    let side=i%2?1:-1,x=p.x-side*dz*7,z=p.z+side*dx*7;if(real.blocked(x,z)){side=-side;x=p.x-side*dz*7;z=p.z+side*dx*7;}if(real.blocked(x,z)){x=p.x;z=p.z;}
-    const pedestrian=person(x,z);pedestrian.baseX=x;pedestrian.walkDx=dx;pedestrian.walkDz=dz;
-  }
   const startCandidates=[];
   for(const id of connected){const p=network.nodes.get(id);if(restaurants.some(shop=>Math.hypot(p.x-shop.pickup[0],p.z-shop.pickup[1])<60))continue;
     for(const edge of network.adj.get(id)||[]){if(edge.length<35)continue;const target=network.nodes.get(edge.to),dx=(target.x-p.x)/edge.length,dz=(target.z-p.z)/edge.length;
@@ -54,15 +67,58 @@ export function buildRealCity({THREE,scene,material,random}){
   if(startCandidates.length<3)throw new Error('No hay suficientes inicios transitables');
   startCandidates.sort((a,b)=>a.z-b.z);
   const starts=[0,1,2].map(i=>startCandidates[Math.floor((i+.5)*startCandidates.length/3)]);
-  real.populateCommerce(starts);
-
-  // Populate the streets the player actually sees, not just distant nodes.
-  for(const start of starts)for(const seg of network.segments){if(seg.length<16)continue;const dx=(seg.b.x-seg.a.x)/seg.length,dz=(seg.b.z-seg.a.z)/seg.length;
-    for(const side of [-1,1]){const x=(seg.a.x+seg.b.x)/2-side*dz*7,z=(seg.a.z+seg.b.z)/2+side*dx*7,d=Math.hypot(x-start.x,z-start.z);if(d<14||d>65||real.blocked(x,z))continue;if(people.some(p=>Math.hypot(p.mesh.position.x-x,p.mesh.position.z-z)<5))continue;const p=person(x,z);p.baseX=x;p.walkDx=dx;p.walkDz=dz;}
+  real.populateCommerce(starts,restaurants.filter(s=>s.mesh.parent).map(s=>s.mesh.position));
+  real.populateParks();
+  for(const park of real.parkSites)for(const [dx,dz] of (park.paved?[[4,6]]:[[-6,5],[4,6],[6,-5],[-6,-5]])){
+    const visitor=person(park.x+dx,park.z+dz);
+    visitor.mesh.position.y=.1;visitor.walk=false;
+    visitor.mesh.rotation.y=Math.atan2(dx,dz);
   }
-  for(const row of real.commercialRows){if(!starts.some(s=>Math.hypot(s.x-row.x,s.z-row.z)<115))continue;
-    const x=row.x-row.nx*1.4,z=row.z-row.nz*1.4;if(real.blocked(x,z)||people.some(p=>Math.hypot(p.mesh.position.x-x,p.mesh.position.z-z)<4))continue;
-    const p=person(x,z);p.baseX=x;p.walkDx=row.dx;p.walkDz=row.dz;
+  const checkpoints=[];
+  const avenues=network.segments.filter(s=>width(s)>=11&&s.length>31&&s.bridge!=='yes'&&s.tunnel!=='yes');
+  for(const anchor of [...starts,project(-31.4238439,-64.1866539),project(-31.428586,-64.1849148)]){
+    const nearby=avenues.map(s=>({s,x:(s.a.x+s.b.x)/2,z:(s.a.z+s.b.z)/2}))
+      .sort((a,b)=>Math.hypot(a.x-anchor.x,a.z-anchor.z)-Math.hypot(b.x-anchor.x,b.z-anchor.z));
+    for(const {s,x,z} of nearby){
+      if(checkpoints.some(p=>Math.hypot(p.x-x,p.z-z)<95))continue;
+      const dx=(s.b.x-s.a.x)/s.length,dz=(s.b.z-s.a.z)/s.length,edge=width(s)/2;
+      const side=[-1,1].find(side=>[-3,0,3].every(d=>clearSidewalk(x+dx*d-dz*side*(edge+1.5),z+dz*d+dx*side*(edge+1.5),.65)));
+      if(!side)continue;
+      const nx=-dz*side,nz=dx*side,angle=Math.atan2(-dx,-dz);
+      const cx=x+nx*(edge-1.12),cz=z+nz*(edge-1.12);
+      if(real.blocked(cx,cz))continue;
+      checkpoints.push({x,z,dx,dz,nx,nz,edge,car:{x:cx,z:cz,angle}});
+      for(const d of [-3,3]){
+        const officer=person(x+dx*d+nx*(edge+1.5),z+dz*d+nz*(edge+1.5),false,true);
+        officer.mesh.rotation.y=Math.atan2(-nx,-nz);
+      }
+      break;
+    }
+  }
+
+  const streets=network.segments.filter(s=>s.length>16&&s.tunnel!=='yes').map(s=>{
+    const x=(s.a.x+s.b.x)/2,z=(s.a.z+s.b.z)/2;
+    return {s,distance:Math.min(...starts.map(p=>Math.hypot(p.x-x,p.z-z)))};
+  });
+  const prioritized=[...streets.filter(s=>s.distance<130),...streets.filter((s,i)=>s.distance>=130&&i%3===0)];
+  let walkers=0;
+  for(const {s,distance} of prioritized){
+    if(walkers>=360)break;
+    const dx=(s.b.x-s.a.x)/s.length,dz=(s.b.z-s.a.z)/s.length,offset=width(s)/2+1.8;
+    for(const t of distance<130?[.3,.65]:[.5])for(const side of [-1,1]){
+      const x=s.a.x+dx*s.length*t-dz*side*offset,z=s.a.z+dz*s.length*t+dx*side*offset;
+      if(people.some(p=>Math.hypot(p.mesh.position.x-x,p.mesh.position.z-z)<4))continue;
+      if(![-3,-1.5,0,1.5,3].every(d=>clearSidewalk(x+dx*d,z+dz*d,.65)))continue;
+      const p=person(x,z);p.baseX=x;p.walkDx=dx;p.walkDz=dz;walkers++;
+    }
+  }
+  for(const row of real.commercialRows){
+    for(const along of [-2.4,2.4]){
+      const x=row.x+row.dx*along-row.nx*.95,z=row.z+row.dz*along-row.nz*.95;
+      if(!clearSidewalk(x,z,.7)||people.some(p=>Math.hypot(p.mesh.position.x-x,p.mesh.position.z-z)<4.5))continue;
+      const customer=person(x,z);customer.walk=false;
+      customer.mesh.rotation.y=Math.atan2(row.nx,row.nz);
+    }
   }
   const actorGroups=new Map();
   for(const p of people)p.mesh.traverse(m=>{if(!m.isMesh)return;const key=m.geometry.uuid+':'+m.material.uuid;if(!actorGroups.has(key))actorGroups.set(key,[]);actorGroups.get(key).push({mesh:m,root:p.mesh});m.visible=false;});
@@ -70,6 +126,6 @@ export function buildRealCity({THREE,scene,material,random}){
   for(const items of actorGroups.values()){const batch=new THREE.InstancedMesh(items[0].mesh.geometry,items[0].mesh.material,items.length);scene.add(batch);batches.push({batch,items});}
   function updateCrowds(){for(const p of people)p.mesh.updateMatrixWorld(true);for(const {batch,items} of batches){items.forEach((o,i)=>batch.setMatrixAt(i,o.root.visible&&!o.root.userData.highDetail?o.mesh.matrixWorld:zero));batch.instanceMatrix.needsUpdate=true;}}
 
-  const realRoot=real.createScene();addRealLandmarks(realRoot,real);addRealFacades(realRoot,real);addRealStreetLife(realRoot,{network,realWorld:real});const realMaterials=new Map();realRoot.traverse(m=>{if(m.isMesh&&m.material?.name)realMaterials.set(m.material.name,m.material);});
-  return {real:true,realWorld:real,network,galleries:real.galleries,realArt:{root:realRoot,materials:realMaterials,streetLamps:realRoot.userData.streetLamps},starts,city,colliders,roads:[-400,-300,-200,-100,0,100,200,300,400],limit:1600,canalX:99999,restaurants,homes,breakables,people,buildings:[],label:()=>{},updateCrowds};
+  const realRoot=real.createScene();addRealLandmarks(realRoot,real);addBuildingFronts(realRoot,real);addRealFacades(realRoot,real);addRealStreetLife(realRoot,{network,realWorld:real});const realMaterials=new Map();realRoot.traverse(m=>{if(m.isMesh&&m.material?.name)realMaterials.set(m.material.name,m.material);});
+  return {real:true,realWorld:real,network,galleries:real.galleries,realArt:{root:realRoot,materials:realMaterials,streetLamps:realRoot.userData.streetLamps},starts,checkpoints,city,colliders,roads:[-400,-300,-200,-100,0,100,200,300,400],limit:1600,canalX:99999,restaurants,homes,breakables,people,buildings:[],label:()=>{},updateCrowds};
 }

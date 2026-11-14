@@ -2,11 +2,11 @@ import * as THREE from './vendor/three.module.js';
 import {GLTFLoader} from './vendor/addons/loaders/GLTFLoader.js';
 import {HDRLoader} from './vendor/addons/loaders/HDRLoader.js';
 import {clone as cloneRig} from './vendor/addons/utils/SkeletonUtils.js';
-import {poseCourierDriver} from './art/courier-pose.js?v=0.36';
+import {poseCourierDriver} from './art/courier-pose.js?v=0.39';
 import {Sky} from './vendor/addons/Sky.js';
-import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.36';
-import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.36';
-import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.36';
+import {createCourierMotorcycle} from './art/courier-motorcycle.js?v=0.39';
+import {createCordobaArchitecture,batchStaticArchitecture} from './art/cordoba-architecture.js?v=0.39';
+import {createCanopyStreet} from './art/cordoba-landscape.js?v=0.39';
 
 export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicleBatches,bike,lean,riderModel,passengerModel,material,getState}) {
   const gltf=new GLTFLoader(),textures=new THREE.TextureLoader();
@@ -69,6 +69,8 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
   // instanced batches; they are placed in vehicle metres, after model fitting.
   const carDetailBox=new THREE.BoxGeometry(1,1,1);
   const carDetailMaterials={dark:new THREE.MeshStandardMaterial({color:'#242c30',roughness:.65}),chrome:new THREE.MeshStandardMaterial({color:'#b5bec0',metalness:.75,roughness:.3}),plate:new THREE.MeshStandardMaterial({color:'#e9e8da',roughness:.65})};
+  const frontLens=new THREE.MeshStandardMaterial({color:'#fff2cd',emissive:'#e9c788',emissiveIntensity:.32,roughness:.27});
+  const rearLens=new THREE.MeshStandardMaterial({color:'#cf282c',emissive:'#86141a',emissiveIntensity:.48,roughness:.31});
   function fitVehicle(source,length,paint){
     const model=source.scene.clone(true);model.updateMatrixWorld(true);
     const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
@@ -91,7 +93,14 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
         detail(.055,.12,.32,x,.8,-.38,carDetailMaterials.dark);
         detail(.035,.055,.23,x,.81,.38,carDetailMaterials.chrome);
         detail(.025,.7,.035,x,.55,.12,carDetailMaterials.dark);
+        detail(.15,.075,.18,x+side*.06,.97,-.78,carDetailMaterials.dark);
+        detail(.20,.14,.26,x+side*.12,.98,-.83,carDetailMaterials.chrome);
+        detail(width*.17,.10,.055,side*width*.33,.55,-end+.08,frontLens);
+        detail(width*.16,.09,.055,side*width*.33,.53,end-.06,rearLens);
       }
+      detail(width*.43,.18,.06,0,.5,-end+.025,carDetailMaterials.dark);
+      for(const y of [.46,.53])detail(width*.38,.023,.055,0,y,-end-.009,carDetailMaterials.chrome);
+      detail(width*.68,.065,.065,0,.26,end-.045,carDetailMaterials.dark);
       detail(.53,.15,.035,0,.4,end-.05,carDetailMaterials.plate);
       detail(.53,.15,.035,0,.4,-end+.05,carDetailMaterials.plate);
       detail(width*.58,.09,.04,0,.25,end-.03,carDetailMaterials.dark);
@@ -162,7 +171,7 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
   }
   let lodTimer=2;
   function assignCrowd(){
-    const s=getState(),candidates=cityWorld.people.filter(p=>p.mesh.visible).sort((a,b)=>{
+    const s=getState(),candidates=cityWorld.people.filter(p=>p.mesh.visible&&!p.police).sort((a,b)=>{
       const score=p=>(p.waiting?-100000:0)+Math.hypot(p.mesh.position.x-s.x,p.mesh.position.z-s.z);
       return score(a)-score(b);
     }).slice(0,pool.length);
@@ -182,8 +191,25 @@ export async function loadDistrict({renderer,scene,camera,cityWorld,cars,vehicle
   vehicleBatches.forEach(({batch})=>batch.visible=false);
   const templates=new Map(),premiumCars=[],vehicleGroups=new Map();
   cars.forEach((c,i)=>{
-    const kind=c.bus?'bus':i%11===0?'truck':i%9===0?'modern':i%5===0?'suv':i%7===0?'sport':'car',paint=['#f7c82e','#ed653b','#4a9a8c','#cbdce2','#3486b4','#e8e1c9','#f4f1e8','#9d5e53'][i%8],key=kind+paint;
-    if(!templates.has(key))templates.set(key,kind==='truck'?makeDeliveryTruck(paint):fitVehicle({car,suv,bus,sport,modern}[kind],c.bus?8.1:4.5,c.bus?null:paint));
+    const kind=c.patrol?'patrol':c.bus?'bus':i%11===0?'truck':i%9===0?'modern':i%5===0?'suv':i%7===0?'sport':'car';
+    const paint=c.patrol?'#f4f6ef':['#f7c82e','#ed653b','#4a9a8c','#cbdce2','#3486b4','#e8e1c9','#f4f1e8','#9d5e53'][i%8],key=kind+paint;
+    if(!templates.has(key)){
+      const model=kind==='truck'?makeDeliveryTruck(paint):fitVehicle({car,suv,bus,sport,modern,patrol:modern}[kind],c.bus?8.1:4.5,c.bus?null:paint);
+      if(c.patrol){
+        const bounds=new THREE.Box3().setFromObject(model),top=bounds.max.y;
+        const size=bounds.getSize(new THREE.Vector3());
+        const block=(color,x,y,z,w,h,d,glow=false)=>{
+          const mat=new THREE.MeshStandardMaterial({color,emissive:glow?color:'#000000',emissiveIntensity:glow?.85:0});
+          const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+          mesh.position.set(x,y,z);model.add(mesh);
+        };
+        block('#283d53',0,top+.06,0,.95,.12,.28);
+        block('#57a9ff',-.27,top+.15,0,.43,.13,.24,true);
+        block('#436cda',.27,top+.15,0,.43,.13,.24,true);
+        for(const side of [-1,1])block('#214f86',side*size.x*.48,top*.48,0,.065,.23,2);
+      }
+      templates.set(key,model);
+    }
     const root=templates.get(key).clone(true);premiumCars.push({root,car:c});c.mesh.removeFromParent();
     root.traverse(m=>{if(!m.isMesh)return;const key=m.geometry.uuid+':'+m.material.uuid;if(!vehicleGroups.has(key))vehicleGroups.set(key,[]);vehicleGroups.get(key).push(m);m.visible=false;});
   });
