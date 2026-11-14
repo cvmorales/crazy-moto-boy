@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import {mergeGeometries} from './vendor/addons/utils/BufferGeometryUtils.js';
-import {buildNetwork,project,nearestSegment,nearbySegments} from './real-network.js?v=0.42';
+import {jesuitPrecinct,jesuitChurchId,jesuitChapelId,jesuitPedestrianStreets} from './art/jesuit-block.js?v=0.43';
+import {buildNetwork,project,nearestSegment,nearbySegments} from './real-network.js?v=0.43';
 
 // OSM positions are projected at approximately one world unit per metre.
 // Building heights are estimated only where the source has no height/levels.
@@ -19,6 +20,7 @@ export function offRoad(network,x,z,margin=0){
 }
 export function createRealWorld(data){
   const network=buildNetwork(data),buildings=[];
+  network.pedestrian=jesuitPedestrianStreets;
   const nw=project(data.bbox[3],data.bbox[0]),se=project(data.bbox[1],data.bbox[2]);
   const inBounds=p=>p.x>=nw.x&&p.x<=se.x&&p.z>=nw.z&&p.z<=se.z;
   network.segments=network.segments.filter(s=>inBounds(s.a)&&inBounds(s.b));
@@ -46,7 +48,7 @@ export function createRealWorld(data){
   const greenPolygons=(data.greens||[]).map(area=>area.node_ids.map(id=>network.nodes.get(id)).filter(Boolean)).filter(points=>points.length>=4);
   let generated=0;
   for(let x=Math.ceil(nw.x/23)*23;x<se.x;x+=23)for(let z=Math.ceil(nw.z/23)*23;z<se.z;z+=23){
-    if(Math.hypot(x-pastor.x,z-pastor.z)<42||Math.hypot(x-plaza.x,z-plaza.z)<55||greenPolygons.some(poly=>inside({x,z},poly)))continue;
+    if(Math.hypot(x-pastor.x,z-pastor.z)<42||Math.hypot(x-plaza.x,z-plaza.z)<55||jesuitPrecinct(x,z)||greenPolygons.some(poly=>inside({x,z},poly)))continue;
     const p={x,z}, corners=[{x:x-6,z:z-6},{x:x+6,z:z-6},{x:x+6,z:z+6},{x:x-6,z:z+6}];
     let nearest=Infinity,clear=true;
     for(const segment of network.segments){
@@ -129,7 +131,7 @@ export function createRealWorld(data){
     // Fill open paved blocks as well as surveyed green spaces. Keep distant
     // terrain outside the street network out of the placement search.
     for(let x=nw.x+16;x<se.x-16;x+=27)for(let z=nw.z+16;z<se.z-16;z+=27){
-      if(parkSites.some(p=>Math.hypot(p.x-x,p.z-z)<54))continue;
+      if(jesuitPrecinct(x,z)||parkSites.some(p=>Math.hypot(p.x-x,p.z-z)<54))continue;
       if(Math.hypot(x-plaza.x,z-plaza.z)<42||Math.hypot(x-pastor.x,z-pastor.z)<30)continue;
       const road=nearestSegment(network,{x,z});
       if(!road||road.distance<width(road.segment)/2+12||road.distance>125)continue;
@@ -149,6 +151,7 @@ export function createRealWorld(data){
       const length=s.length>27?15.3:10.2,depth=4.7,offset=width(s)/2+3.7;
       if(Math.hypot(mid.x-pastor.x,mid.z-pastor.z)<42||Math.hypot(mid.x-plaza.x,mid.z-plaza.z)<55)return false;
       const x=mid.x+nx*offset,z=mid.z+nz*offset;
+      if(jesuitPrecinct(x,z))return false;
       if(galleries.some(g=>Math.hypot(g.x-x,g.z-z)<(g.length||12)/2+9)||kiosks.some(p=>Math.hypot(p.x-x,p.z-z)<length/2+5))return false;
       const at=(a,b)=>({x:x+dx*a+nx*b,z:z+dz*a+nz*b});
       for(let i=0;i<=6;i++)for(const d of [-2,0,depth/2,depth]){
@@ -295,7 +298,7 @@ export function createRealWorld(data){
     const palette=['#d8b789','#b98570','#dcd3bc','#d6a88f','#b9bdab','#d8c299'];
     const groups=palette.map(()=>[]),roofs=[];
     for(const b of buildings){
-      if(b.osmId==='1126847036'||b.osmId==='1356799523'||b.osmId==='1149552632')continue;
+      if(['1126847036','1356799523','1149552632',jesuitChurchId,jesuitChapelId].includes(b.osmId))continue;
       const points=b.points.slice(0,-1);if(points.length<3)continue;const shape=new THREE.Shape();shape.moveTo(points[0].x,-points[0].z);for(const p of points.slice(1))shape.lineTo(p.x,-p.z);shape.closePath();
       const geometry=new THREE.ExtrudeGeometry(shape,{depth:b.height,bevelEnabled:false,steps:1});geometry.rotateX(-Math.PI/2);
       const non=geometry.index?geometry.toNonIndexed():geometry;
@@ -312,5 +315,5 @@ export function createRealWorld(data){
     posts.forEach((p,i)=>{dummy.position.set(p.x,3,p.z);dummy.updateMatrix();poles.setMatrixAt(i,dummy.matrix);dummy.position.y=6;dummy.updateMatrix();bulbs.setMatrixAt(i,dummy.matrix);lamps.push({x:p.x,y:6,z:p.z});});root.add(poles,bulbs);root.userData.streetLamps=lamps;
     return root;
   }
-  return {network,buildings,bridges,galleries,commercialRows,parkSites,populateCommerce,populateParks,blocked,createScene};
+  return {network,buildings,bridges,galleries,commercialRows,parkSites,populateCommerce,populateParks,blocked,createScene,registerFootprint};
 }

@@ -27,6 +27,7 @@ export function drawNavigationMap({ctx,player,roads,limit,canalX,realNetwork=nul
     }
     drawSegments(realNetwork.water,10,'#458ba0');
     drawSegments(realNetwork.segments,8,'#67818a');
+    drawSegments(realNetwork.pedestrian??[],5,'#c0ad91');
   }else{
     for(let i=0;i<roads.length-1;i++)for(let j=0;j<roads.length-1;j++)block(roads[i]+12,roads[j]+12,76,76,'#294146');
     block(14,-86,72,72,'#355d4a');block(114,14,72,72,'#355d4a');block(canalX-6,-limit,12,limit*2,'#458ba0');

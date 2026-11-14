@@ -1,11 +1,12 @@
-import {realMapData} from './real-map-data.js?v=0.42';
-import {createRealWorld,offRoad,sidewalkTop,width} from './real-world.js?v=0.42';
-import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.42';
-import {actorFactory} from './actors.js?v=0.42';
-import {addRealLandmarks} from './art/real-landmarks.js?v=0.42';
-import {addRealStreetLife} from './art/real-street-life.js?v=0.42';
-import {addRealFacades} from './art/real-facades.js?v=0.42';
-import {addBuildingFronts} from './art/building-fronts.js?v=0.42';
+import {realMapData} from './real-map-data.js?v=0.43';
+import {createRealWorld,offRoad,sidewalkTop,width} from './real-world.js?v=0.43';
+import {project,nearestRoadNode,nearestSegment,shortestRoute} from './real-network.js?v=0.43';
+import {actorFactory} from './actors.js?v=0.43';
+import {addRealLandmarks} from './art/real-landmarks.js?v=0.43';
+import {addRealStreetLife} from './art/real-street-life.js?v=0.43';
+import {addRealFacades} from './art/real-facades.js?v=0.43';
+import {addBuildingFronts} from './art/building-fronts.js?v=0.43';
+import {addJesuitBlock,jesuitPedestrianStreets} from './art/jesuit-block.js?v=0.43';
 
 // Construct gameplay objects on a connected part of the real street graph.
 export function buildRealCity({THREE,scene,material,random}){
@@ -69,6 +70,19 @@ export function buildRealCity({THREE,scene,material,random}){
   const starts=[0,1,2].map(i=>startCandidates[Math.floor((i+.5)*startCandidates.length/3)]);
   real.populateCommerce(starts,restaurants.filter(s=>s.mesh.parent).map(s=>s.mesh.position));
   real.populateParks();
+  const realRoot=real.createScene();
+  addJesuitBlock(realRoot,real);
+  for(const {a,b,width:walkWidth} of jesuitPedestrianStreets){
+    const length=Math.hypot(b.x-a.x,b.z-a.z),dx=(b.x-a.x)/length,dz=(b.z-a.z)/length;
+    for(let along=14;along<length-8;along+=13){
+      const side=along%2?1:-1;
+      const offset=side*(walkWidth/2-1.3);
+      const x=a.x+dx*along-dz*offset,z=a.z+dz*along+dx*offset;
+      if(![-3,0,3].every(d=>!real.blocked(x+dx*d,z+dz*d)))continue;
+      const visitor=person(x,z);
+      visitor.mesh.position.y=.09;visitor.baseX=x;visitor.walkDx=dx;visitor.walkDz=dz;
+    }
+  }
   for(const park of real.parkSites)for(const [dx,dz] of (park.paved?[[4,6]]:[[-6,5],[4,6],[6,-5],[-6,-5]])){
     const visitor=person(park.x+dx,park.z+dz);
     visitor.mesh.position.y=.1;visitor.walk=false;
@@ -144,6 +158,6 @@ export function buildRealCity({THREE,scene,material,random}){
     }
   }
 
-  const realRoot=real.createScene();addRealLandmarks(realRoot,real);addBuildingFronts(realRoot,real);addRealFacades(realRoot,real);addRealStreetLife(realRoot,{network,realWorld:real});const realMaterials=new Map();realRoot.traverse(m=>{if(m.isMesh&&m.material?.name)realMaterials.set(m.material.name,m.material);});
+  addRealLandmarks(realRoot,real);addBuildingFronts(realRoot,real);addRealFacades(realRoot,real);addRealStreetLife(realRoot,{network,realWorld:real});const realMaterials=new Map();realRoot.traverse(m=>{if(m.isMesh&&m.material?.name)realMaterials.set(m.material.name,m.material);});
   return {real:true,realWorld:real,network,galleries:real.galleries,realArt:{root:realRoot,materials:realMaterials,streetLamps:realRoot.userData.streetLamps},starts,checkpoints,city,colliders,roads:[-400,-300,-200,-100,0,100,200,300,400],limit:1600,canalX:99999,restaurants,homes,breakables,people,buildings:[],label:()=>{},updateCrowds};
 }
